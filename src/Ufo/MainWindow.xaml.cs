@@ -147,7 +147,10 @@ public partial class MainWindow : Window
         isHeadsetLinked = isOnline;
         FonePanel.IsEnabled = isOnline;
         MicPanel.IsEnabled = isOnline;
-        ShowBeam(isOnline ? battery : null);
+        if (isOnline)
+        {
+            ShowBeam(battery); // offline the beam keeps its charge while it retracts (see ShowCrash)
+        }
         ShowCrash(!isOnline);
         LinkText.Text = isLinked switch
         {

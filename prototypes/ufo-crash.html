@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UFO · queda e volta</title>
+<style>
+*{box-sizing:border-box}
+:root{--bg:#0B0B0C;--ink:#EDEDEA;--mu:#77776F;--line:#232322;--ring:#34342F;--ac:#FF5A1F;--dead:#4A4A45;--faint:#9A4A2A}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:"Segoe UI Variable Text","Segoe UI",system-ui,sans-serif}
+#stage{position:fixed;inset:0;display:grid;place-items:center}
+.orbit{position:relative;width:310px;height:310px}
+.ring{position:absolute;inset:0;border:1px dashed var(--ring);border-radius:50%}
+.moon{position:absolute;width:62px;height:62px;margin:-31px 0 0 -31px;border-radius:50%;background:var(--bg);border:1px solid var(--line);display:grid;place-items:center;color:var(--mu);z-index:2}
+.moon.on{background:var(--ac);border-color:var(--ac);color:var(--bg)}
+.moon span{position:absolute;top:70px;font:11px "Cascadia Mono",Consolas,monospace;color:var(--mu);white-space:nowrap}
+.core{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;margin-top:-16px;z-index:1}
+.readout{display:flex;flex-direction:column;align-items:center;gap:4px;margin-top:8px;transition:opacity .15s ease-out}
+.readout.out{opacity:0}
+.pct{font:500 28px "Cascadia Mono",Consolas,monospace;letter-spacing:-.02em}
+.status{font:11px "Cascadia Mono",Consolas,monospace;color:var(--mu)}
+
+/* One scene, one saucer. 300 x 229 units at the app's scale (200 units = 118 px): the hovering pose is
+   the saucer at the top with the beam under it; the crashed pose is the SAME saucer moved 127 units down
+   and tipped -58deg, clipped at the ground line. Every transition below is just a path between the two. */
+.scene{width:177px;height:135px;overflow:visible;display:block}
+.ground,.debris *{fill:var(--ring)}
+.ground{opacity:0;transition:opacity .2s ease-out}
+.is-off .ground{opacity:1}
+.fall{transform-origin:150px 52px}
+.beam{transform-origin:150px 79px}
+.debris{transform-origin:144px 212.5px;opacity:0}
+.level{transform-origin:0 150px}
+.gaps{animation:gaps 2.4s linear infinite}
+.gaps rect{fill:var(--bg)}
+.win{fill:var(--ac)}
+.wreck{opacity:0}
+.spark{opacity:0}
+@keyframes gaps{to{transform:translateY(16px)}}
+
+/* Hover bob, scaled by --amp so it eases to rest before a fall instead of snapping. */
+@property --bob{syntax:"<number>";inherits:true;initial-value:0}
+@property --amp{syntax:"<number>";inherits:true;initial-value:1}
+.scene{animation:bob 1.4s ease-in-out infinite alternate;transition:--amp .4s var(--on,0s)}
+.bob{transform:translateY(calc(var(--bob) * var(--amp) * -10px))}
+@keyframes bob{to{--bob:1}}
+
+/* Resting crashed state (no motion needed to read correctly). */
+.is-off .scene{--amp:0;transition:--amp .2s}
+.is-off .fall{transform:translateY(127px) rotate(-58deg)}
+.is-off .beam{transform:scaleY(0)}
+.is-off .debris{opacity:1}
+.is-off .wreck{opacity:1;transition:opacity .1s var(--hit,0s)}
+.is-off .win{fill:var(--dead);animation:flicker 3.6s step-end 1.4s infinite}
+.is-off .spark{animation:spark 2.8s step-end 1.6s infinite}
+.is-off .spark + .spark{animation-delay:2.9s}
+@keyframes flicker{0%{fill:var(--dead)}25%{fill:var(--ac)}26.7%{fill:var(--dead)}29.4%{fill:var(--ac)}33%{fill:var(--faint)}35.5%{fill:var(--dead)}75%{fill:var(--faint)}76.7%{fill:var(--dead)}78.9%{fill:var(--ac)}80.5%{fill:var(--dead)}}
+@keyframes spark{0%{opacity:0}62%{opacity:1}64%{opacity:0}66%{opacity:1}69%,100%{opacity:0}}
+
+/* Shared by every variant: the ground reacts at the moment of impact (--hit) and heals on the way out. */
+.go.is-off .debris{animation:debrisIn .22s var(--hit) cubic-bezier(.23,1,.32,1) both}
+.go.is-on .debris{animation:debrisOut .25s .2s ease-in both}
+@keyframes debrisIn{from{opacity:0;transform:scale(.6)}}
+@keyframes debrisOut{from{opacity:1}to{opacity:0;transform:scale(.7)}}
+
+/* 1 · Atual: what the app does today. The flying saucer vanishes, the wreck slams in from the corner;
+   reconnecting is a hard cut. */
+.v-cut{--hit:180ms;--on:0s}
+.v-cut.go.is-off .fall{animation:slam .26s cubic-bezier(.23,1,.32,1) both}
+@keyframes slam{from{opacity:0;transform:translate(46px,53px) rotate(-58deg)}}
+
+/* Shared by the smooth variants: power dies first (beam retracts into the hatch, lights stutter out),
+   and comes back last (lights stutter on, beam unrolls after the saucer is hovering again: --up). */
+.smooth.go.is-off .beam{animation:beamIn .2s cubic-bezier(.5,0,.75,0) both}
+.smooth.go.is-on .beam{animation:beamOut .35s var(--up) cubic-bezier(.23,1,.32,1) both}
+.smooth.go.is-on .level{animation:fillUp .6s calc(var(--up) + .15s) cubic-bezier(.23,1,.32,1) both}
+.smooth.go.is-off .win{animation:lightsOut .3s step-end both,flicker 3.6s step-end 1.4s infinite}
+.smooth.go.is-on .win{animation:lightsOn .3s step-end both}
+@keyframes beamIn{from{transform:scaleY(1)}to{transform:scaleY(0)}}
+@keyframes beamOut{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes fillUp{from{transform:scaleY(0)}}
+@keyframes lightsOut{0%{fill:var(--ac)}25%{fill:var(--dead)}40%{fill:var(--ac)}55%{fill:var(--dead)}70%{fill:var(--faint)}100%{fill:var(--dead)}}
+@keyframes lightsOn{0%{fill:var(--dead)}20%{fill:var(--ac)}35%{fill:var(--dead)}50%,100%{fill:var(--ac)}}
+
+/* 2 · Pane seca: engine cuts, a beat of hanging in the air, then it drops like a stone and rocks once
+   where it lodges. Back: wiggles loose, shoots up past the hover point and settles. */
+.v-drop{--hit:648ms;--on:1s;--up:.65s}
+.v-drop.go.is-off .fall{animation:dropOff .9s both}
+.v-drop.go.is-on .fall{animation:dropOn 1s both}
+@keyframes dropOff{
+  0%{transform:translate(0,0) rotate(0);animation-timing-function:ease-out}
+  12%{transform:translate(0,2px) rotate(-3deg)}
+  20%{transform:translate(0,-1px) rotate(3deg)}
+  30%{transform:translate(0,-5px) rotate(-5deg);animation-timing-function:cubic-bezier(.6,0,.9,.4)}
+  72%{transform:translate(0,127px) rotate(-66deg);animation-timing-function:ease-out}
+  86%{transform:translate(0,127px) rotate(-55deg);animation-timing-function:ease-in-out}
+  100%{transform:translate(0,127px) rotate(-58deg)}
+}
+@keyframes dropOn{
+  0%{transform:translate(0,127px) rotate(-58deg)}
+  10%{transform:translate(0,127px) rotate(-52deg)}
+  20%{transform:translate(0,127px) rotate(-61deg)}
+  28%{transform:translate(0,125px) rotate(-56deg);animation-timing-function:cubic-bezier(.3,0,.2,1)}
+  70%{transform:translate(0,-9px) rotate(5deg);animation-timing-function:ease-in-out}
+  100%{transform:translate(0,0) rotate(0)}
+}
+
+/* 3 · Folha seca: no thrust, so it sways down like a falling leaf and digs in softly. Back: sways up
+   the same way, shorter each swing. */
+.v-leaf{--hit:1090ms;--on:1.3s;--up:.95s}
+.v-leaf.go.is-off .fall{animation:leafOff 1.3s ease-in-out both}
+.v-leaf.go.is-on .fall{animation:leafOn 1.3s ease-in-out both}
+@keyframes leafOff{
+  0%{transform:translate(0,0) rotate(0)}
+  10%{transform:translate(0,-4px) rotate(4deg)}
+  30%{transform:translate(-26px,28px) rotate(16deg)}
+  52%{transform:translate(22px,64px) rotate(-18deg)}
+  70%{transform:translate(-10px,100px) rotate(-30deg);animation-timing-function:ease-in}
+  84%{transform:translate(0,127px) rotate(-63deg);animation-timing-function:ease-out}
+  100%{transform:translate(0,127px) rotate(-58deg)}
+}
+@keyframes leafOn{
+  0%{transform:translate(0,127px) rotate(-58deg)}
+  12%{transform:translate(0,127px) rotate(-50deg)}
+  22%{transform:translate(0,126px) rotate(-60deg)}
+  45%{transform:translate(16px,70px) rotate(-14deg)}
+  70%{transform:translate(-10px,20px) rotate(10deg)}
+  88%{transform:translate(3px,-6px) rotate(-3deg)}
+  100%{transform:translate(0,0) rotate(0)}
+}
+
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+
+/* simulation controls (harness context, not part of the design) */
+.sim{position:fixed;top:20px;right:20px;display:flex;align-items:center;gap:14px;padding:8px 14px;border:1px solid var(--line);border-radius:10px;font:12px "Cascadia Mono",Consolas,monospace;color:var(--mu);z-index:10;background:var(--bg)}
+.sim button{font:inherit;color:var(--bg);background:var(--ac);border:0;border-radius:6px;padding:6px 12px;cursor:pointer;min-width:112px}
+.sim label{display:flex;align-items:center;gap:6px;cursor:pointer}
+.sim input{accent-color:var(--ac)}
+
+/* picker (verbatim spec) */
+.proto-picker{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:2147483647;display:flex;align-items:center;gap:2px;padding:4px;border-radius:999px;background:rgba(10,10,10,.82);-webkit-backdrop-filter:blur(12px) saturate(1.4);backdrop-filter:blur(12px) saturate(1.4);box-shadow:0 0 0 1px rgba(255,255,255,.08) inset,0 8px 24px rgba(0,0,0,.24),0 2px 6px rgba(0,0,0,.12);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:13px;line-height:1;-webkit-font-smoothing:antialiased;user-select:none;-webkit-user-select:none}
+.proto-picker-highlight{position:absolute;top:4px;left:0;height:28px;border-radius:999px;background:rgba(255,255,255,.12);will-change:transform}
+.proto-picker[data-ready] .proto-picker-highlight{transition:transform 250ms cubic-bezier(.23,1,.32,1),width 250ms cubic-bezier(.23,1,.32,1)}
+@media (prefers-reduced-motion:reduce){.proto-picker[data-ready] .proto-picker-highlight{transition:none}}
+.proto-picker-item{position:relative;display:flex;align-items:center;height:28px;padding:0 12px;border:0;border-radius:999px;background:transparent;color:rgba(255,255,255,.55);font:inherit;cursor:pointer;transition:color 150ms ease-out}
+.proto-picker-item:hover{color:rgba(255,255,255,.85)}
+.proto-picker-item:active{transform:scale(.97)}
+.proto-picker-item:focus-visible{outline:2px solid rgba(255,255,255,.4);outline-offset:2px}
+.proto-picker-item[data-active]{color:#fff}
+.proto-picker-divider{width:1px;height:16px;margin:0 4px;background:rgba(255,255,255,.12)}
+.proto-picker-replay{padding:0 10px;font-size:14px}
+</style>
+</head>
+<body>
+<div id="stage"></div>
+
+<div class="sim" aria-label="Simulação">
+  <button id="toggle">desconectar</button>
+  <label><input id="slow" type="checkbox"> câmera lenta</label>
+  <span>espaço alterna · R repete</span>
+</div>
+
+<nav class="proto-picker" aria-label="Prototype variants">
+  <span class="proto-picker-highlight" aria-hidden="true"></span>
+  <button class="proto-picker-item" data-active aria-current="true">Atual</button>
+  <button class="proto-picker-item">Pane seca</button>
+  <button class="proto-picker-item">Folha seca</button>
+  <span class="proto-picker-divider" aria-hidden="true"></span>
+  <button class="proto-picker-item proto-picker-replay" aria-label="Replay animation (R)">↻</button>
+</nav>
+
+<script>
+const LEVEL = 22;
+// textAt: when the readout swaps, in ms. Off = the moment of impact; on = the saucer is back up.
+const variants = [
+  { className: 'v-cut', textAt: { off: 0, on: 0 } },
+  { className: 'v-drop smooth', textAt: { off: 648, on: 700 } },
+  { className: 'v-leaf smooth', textAt: { off: 1090, on: 1000 } },
+];
+
+const ICON = {
+  fone: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="14" width="4.5" height="7" rx="1.6"/><rect x="16.5" y="14" width="4.5" height="7" rx="1.6"/></svg>',
+  mic: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg>',
+  eq: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 8h16M4 16h16"/><circle cx="15" cy="8" r="2" fill="#0B0B0C"/><circle cx="9" cy="16" r="2" fill="#0B0B0C"/></svg>',
+};
+const moon = (angle, key, label, on) => {
+  const x = 155 + 155 * Math.cos(angle * Math.PI / 180), y = 155 + 155 * Math.sin(angle * Math.PI / 180);
+  return `<div class="moon${on ? ' on' : ''}" style="left:${x}px;top:${y}px">${ICON[key]}<span>${label}</span></div>`;
+};
+
+// Geometry copied from MainWindow.xaml / App.xaml (UfoIcon, CrashedUfo), so the keyframes port 1:1.
+function scene() {
+  const lens = 'M14 52C52 20 148 20 186 52C150 88 50 88 14 52Z';
+  const levelY = 150 - 150 * LEVEL / 100;
+  const gaps = Array.from({ length: 12 }, (_, i) => `<rect y="${i * 16 - 16}" width="200" height="4"/>`).join('');
+  return `<svg class="scene" viewBox="0 0 300 229" aria-hidden="true">
+    <defs>
+      <clipPath id="above-ground"><rect x="-60" y="-80" width="420" height="291"/></clipPath>
+      <clipPath id="cone"><path d="M72 0H128L176 150H24Z"/></clipPath>
+      <clipPath id="level"><rect y="${levelY}" width="200" height="${150 - levelY}"/></clipPath>
+    </defs>
+    <rect class="ground" y="211" width="300" height="1.5"/>
+    <g class="bob"><g class="beam"><g transform="translate(50 79)" clip-path="url(#cone)">
+      <rect width="200" height="150" fill="#1E1E1C"/>
+      <g clip-path="url(#level)"><g class="level"><rect width="200" height="150" fill="#FF5A1F"/><g class="gaps">${gaps}</g></g></g>
+    </g></g></g>
+    <g clip-path="url(#above-ground)"><g class="bob"><g class="fall"><g transform="translate(50 0)">
+      <path d="M70 32a30 30 0 0 1 60 0" fill="#FF5A1F" stroke="#0B0B0C" stroke-width="7" stroke-linejoin="round"/>
+      <path d="${lens}" fill="#EDEDEA" stroke="#0B0B0C" stroke-width="7" stroke-linejoin="round" paint-order="stroke"/>
+      <rect class="win" x="42" y="56" width="13" height="5.5" rx="2.75" transform="rotate(12 48.5 58.75)"/>
+      <rect class="win" x="71" y="57" width="10" height="5.5" rx="2.75" transform="rotate(50 76 59.75)"/>
+      <circle class="win" cx="100" cy="60" r="4"/>
+      <rect class="win" x="119" y="57" width="10" height="5.5" rx="2.75" transform="rotate(-50 124 59.75)"/>
+      <rect class="win" x="145" y="56" width="13" height="5.5" rx="2.75" transform="rotate(-12 151.5 58.75)"/>
+      <ellipse cx="100" cy="79" rx="28" ry="6.5" fill="#FF5A1F" stroke="#0B0B0C" stroke-width="7"/>
+      <g class="wreck" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M118 33l15 7M127 30l10 5M150 42l13 4M86 35l-10 6M160 50l9 1M106 10l5 6l-3 5" stroke="#0B0B0C" stroke-width="1.2"/>
+        <path class="spark" d="M172 40l8-9l-1 7l8-5" stroke="#FF5A1F" stroke-width="2"/>
+        <path class="spark" d="M146 74l7 8l1-7l7 7" stroke="#FF5A1F" stroke-width="2"/>
+      </g>
+    </g></g></g></g>
+    <g class="debris"><g transform="translate(0 39)">
+      <path d="M92 173.5C100 160 116 150 134 152C150 153 160 160 168 164C178 168 188 173.5 196 173.5Z"/>
+      <ellipse cx="76" cy="170.4" rx="3.2" ry="2.2"/><ellipse cx="60" cy="171" rx="2" ry="1.4"/>
+      <ellipse cx="41" cy="171.3" rx="1.4" ry="1"/><ellipse cx="212" cy="170.6" rx="2.6" ry="1.8"/>
+    </g></g>
+  </svg>`;
+}
+
+const stage = document.getElementById('stage');
+const toggle = document.getElementById('toggle'), slow = document.getElementById('slow');
+const picker = document.querySelector('.proto-picker');
+const highlight = picker.querySelector('.proto-picker-highlight');
+const items = [...picker.querySelectorAll('.proto-picker-item:not(.proto-picker-replay)')];
+let current = 0, linked = true, textTimer;
+
+function writeText() {
+  stage.querySelector('.pct').textContent = linked ? `${LEVEL}%` : '—';
+  stage.querySelector('.status').textContent = linked ? 'aw pro · conectado' : 'fone desligado ou fora de alcance';
+}
+
+function setLink(isLinked, animate) {
+  linked = isLinked;
+  const orbit = stage.firstElementChild, readout = stage.querySelector('.readout');
+  orbit.className = `orbit ${variants[current].className} ${linked ? 'is-on' : 'is-off'}${animate ? ' go' : ''}`;
+  toggle.textContent = linked ? 'desconectar' : 'conectar';
+  clearTimeout(textTimer);
+  const rate = slow.checked ? 0.25 : 1;
+  const wait = animate ? variants[current].textAt[linked ? 'on' : 'off'] / rate : 0;
+  if (!wait) { readout.classList.remove('out'); writeText(); return; }
+  orbit.getAnimations({ subtree: true }).forEach((animation) => { animation.playbackRate = rate; });
+  readout.classList.add('out');
+  textTimer = setTimeout(() => { writeText(); readout.classList.remove('out'); }, wait);
+}
+
+function replay() {
+  setLink(!linked, false);
+  void stage.offsetWidth; // flush, so the same transition starts again
+  setLink(!linked, true);
+}
+
+function mount(i) {
+  current = i;
+  stage.innerHTML = `<div class="orbit"><div class="ring"></div>
+    ${moon(0, 'fone', 'fone', true)}${moon(120, 'mic', 'microfone')}${moon(240, 'eq', 'equalizador')}
+    <div class="core">${scene()}<div class="readout"><span class="pct"></span><span class="status"></span></div></div></div>`;
+  setLink(true, false);
+}
+
+function moveHighlight() {
+  const el = items[current];
+  highlight.style.width = el.offsetWidth + 'px';
+  highlight.style.transform = `translateX(${el.offsetLeft}px)`;
+}
+
+function setActive(i) {
+  if (i < 0 || i >= variants.length) return;
+  items.forEach((el, j) => {
+    el.toggleAttribute('data-active', j === i);
+    if (j === i) el.setAttribute('aria-current', 'true');
+    else el.removeAttribute('aria-current');
+  });
+  mount(i);
+  moveHighlight();
+  const url = new URL(location);
+  url.searchParams.set('v', i + 1);
+  history.replaceState(null, '', url);
+}
+
+items.forEach((el, i) => el.addEventListener('click', () => setActive(i)));
+picker.querySelector('.proto-picker-replay').addEventListener('click', replay);
+toggle.addEventListener('click', () => setLink(!linked, true));
+window.addEventListener('resize', moveHighlight);
+document.addEventListener('keydown', (e) => {
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  const num = parseInt(e.key, 10);
+  if (num >= 1 && num <= variants.length) setActive(num - 1);
+  else if (e.key === 'ArrowRight') setActive((current + 1) % variants.length);
+  else if (e.key === 'ArrowLeft') setActive((current - 1 + variants.length) % variants.length);
+  else if (e.key === 'r' || e.key === 'R') replay();
+  else if (e.key === ' ') { e.preventDefault(); setLink(!linked, true); }
+});
+
+setActive((parseInt(new URLSearchParams(location.search).get('v'), 10) || 2) - 1);
+requestAnimationFrame(() => requestAnimationFrame(() => picker.setAttribute('data-ready', '')));
+</script>
+</body>
+</html>
