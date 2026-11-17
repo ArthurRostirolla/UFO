@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 18 200 92" width="200" height="92">
+  <clipPath id="lens"><path d="M14 70C52 38 148 38 186 70C150 106 50 106 14 70Z"/></clipPath>
+  <path d="M70 50a30 30 0 0 1 60 0" fill="#FF5A1F" stroke="#0B0B0C" stroke-width="7" stroke-linejoin="round"/>
+  <path d="M84 36a17 17 0 0 1 11-12" fill="none" stroke="#FFFFFF" stroke-opacity=".75" stroke-width="7" stroke-linecap="round"/>
+  <path d="M14 70C52 38 148 38 186 70C150 106 50 106 14 70Z" fill="#EDEDEA"/>
+  <path clip-path="url(#lens)" d="M0 66H52v-5h8v5h10v-6h12v6H200V120H0Z" fill="#2B2B28"/>
+  <path d="M14 70C52 38 148 38 186 70C150 106 50 106 14 70Z" fill="none" stroke="#0B0B0C" stroke-width="7" stroke-linejoin="round"/>
+  <g fill="#FFB36B">
+    <rect x="42" y="74" width="13" height="5.5" rx="2.75" transform="rotate(12 48 77)"/>
+    <rect x="71" y="75" width="10" height="5.5" rx="2.75" transform="rotate(50 76 78)"/>
+    <circle cx="100" cy="78" r="4"/>
+    <rect x="119" y="75" width="10" height="5.5" rx="2.75" transform="rotate(-50 124 78)"/>
+    <rect x="145" y="74" width="13" height="5.5" rx="2.75" transform="rotate(-12 152 77)"/>
+  </g>
+  <ellipse cx="100" cy="97" rx="28" ry="6.5" fill="#EDEDEA" stroke="#0B0B0C" stroke-width="7"/>
+</svg>
