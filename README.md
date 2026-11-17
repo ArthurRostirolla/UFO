@@ -28,9 +28,9 @@ dotnet build UFO.slnx -c Release
 
 A lua **clips** guarda os últimos momentos da tela e do som (15 s a 10 min) e os transforma em MP4 por atalho global, ao rir ou gritar no microfone, ou por gravação manual. Os clips ficam em `Vídeos\UFO\<jogo>`.
 
-A captura é feita por um `ffmpeg` filho, toda na placa de vídeo (Desktop Duplication + encoder de hardware), em segmentos de 1 s numa pasta temporária; salvar um clip só junta os últimos segmentos, sem recodificar.
+A captura é feita por um `ffmpeg` filho, toda na placa de vídeo (Windows Graphics Capture + encoder de hardware), em segmentos de 1 s numa pasta temporária; salvar um clip só junta os últimos segmentos, sem recodificar.
 
-O `ffmpeg` (8 ou mais novo, com `ddagrab`) é procurado em `ffmpeg\ffmpeg.exe` ao lado do app e, na falta, no `PATH`. Para empacotar, coloque o executável em `tools\ffmpeg\ffmpeg.exe` antes do build.
+O `ffmpeg` (8 ou mais novo, com `gfxcapture`) é procurado em `ffmpeg\ffmpeg.exe` ao lado do app e, na falta, no `PATH`. Para empacotar, coloque o executável em `tools\ffmpeg\ffmpeg.exe` antes do build.
 
 A risada é reconhecida no próprio computador pelo YAMNet (classificador de sons do Google). O modelo não fica no git: gere `tools\yamnet\yamnet.onnx` uma vez, a partir do modelo oficial, antes do build:
 

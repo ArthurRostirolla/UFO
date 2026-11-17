@@ -7,7 +7,7 @@ namespace Ufo.Clips;
 public sealed record ClipSettings(
     bool IsEnabled = false,
     bool OnlyInGames = false,
-    int Monitor = 0,
+    int Monitor = 0, // ClipSettings.AllMonitors records every screen side by side
     int Height = 0, // 0 = the monitor's own resolution
     int FramesPerSecond = 60,
     int Quality = 2, // 0 low … 3 maximum
@@ -29,6 +29,8 @@ public sealed record ClipSettings(
     int OverlayCorner = 1, // 0 top-left, 1 top-right, 2 bottom-left, 3 bottom-right
     double StorageLimitGb = 0) // 0 = no limit
 {
+    public const int AllMonitors = -1;
+
     public const uint Alt = 1, Control = 2, Shift = 4, Windows = 8;
 
     public const int MinRetroSeconds = 15, MaxRetroSeconds = 600;

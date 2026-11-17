@@ -9,7 +9,7 @@ namespace Ufo.Clips;
 public sealed record CapturePipeline(string Filter, string Encoder);
 
 /// <summary>
-/// The replay buffer. One ffmpeg child captures the screen on the GPU (Desktop Duplication), encodes
+/// The replay buffer. One ffmpeg child captures the screen on the GPU (Windows Graphics Capture), encodes
 /// it with the hardware encoder and writes one-second MPEG-TS segments, sound included, into a
 /// scratch folder; segments older than the retroactive time are deleted. Saving a clip joins the
 /// last N segments into an MP4 without re-encoding.
@@ -57,16 +57,19 @@ public sealed class ClipRecorder : IDisposable
     /// pipelines until one encodes. Throws <see cref="InvalidOperationException"/> with a message for
     /// the user when ffmpeg is missing or no pipeline works.
     /// </summary>
-    public void Start(ClipSettings wanted, int monitorWidth, int monitorHeight)
+    /// <param name="monitorWidth">Width of what is captured: one monitor, or several side by side.</param>
+    /// <param name="monitorHeight">Height of what is captured (the tallest monitor when there are several).</param>
+    /// <param name="monitors">Windows handles (see <see cref="MonitorAt"/>) of the monitors to capture, left to right.</param>
+    public void Start(ClipSettings wanted, int monitorWidth, int monitorHeight, ulong[] monitors)
     {
         Stop();
         settings = wanted;
         (int width, int height) = wanted.OutputSize(monitorWidth, monitorHeight);
         bool isScaled = (width, height) != (monitorWidth, monitorHeight);
-        string key = $"{wanted.Codec}|{wanted.Monitor}|{wanted.FramesPerSecond}|{(isScaled ? $"{width}x{height}" : "")}";
+        string key = $"{wanted.Codec}|{string.Join('+', monitors)}|{wanted.FramesPerSecond}|{(isScaled ? $"{width}x{height}" : "")}";
         if (!pipelines.TryGetValue(key, out CapturePipeline? pipeline))
         {
-            pipeline = Candidates(wanted, isScaled ? (width, height) : null).FirstOrDefault(Works);
+            pipeline = Candidates(wanted, isScaled ? (width, height) : null, monitors, monitorHeight).FirstOrDefault(Works);
             pipelines[key] = pipeline;
         }
         if (pipeline is null)
@@ -204,29 +207,37 @@ public sealed class ClipRecorder : IDisposable
     }
 
     /// <summary>
-    /// Pipelines to try, best first: for each vendor, the path that keeps every frame on the GPU; then
-    /// the same encoders fed through system memory (the screen and the encoder can sit on different
-    /// GPUs on laptops, and not every driver scales on the GPU).
+    /// Pipelines to try, best first: for each vendor, the path that keeps every frame on the GPU (the
+    /// capture itself scales there); then the same encoders fed through system memory (the screen and
+    /// the encoder can sit on different GPUs on laptops).
     /// </summary>
-    public static IEnumerable<CapturePipeline> Candidates(ClipSettings settings, (int Width, int Height)? scaleTo)
+    /// <remarks>
+    /// Several monitors are joined side by side in system memory (frames of different screens cannot be
+    /// stacked on the GPU), each padded to the tallest one. Heavier than a single monitor.
+    /// </remarks>
+    public static IEnumerable<CapturePipeline> Candidates(ClipSettings settings, (int Width, int Height)? scaleTo, ulong[] monitors, int fullHeight)
     {
-        string grab = $"ddagrab=output_idx={settings.Monitor}:framerate={settings.FramesPerSecond}";
         string[] vendors = ["nvenc", "amf", "qsv", "mf"];
-        foreach (string vendor in vendors)
+        string Grab(ulong monitor) => $"gfxcapture=hmonitor={monitor}:max_framerate={settings.FramesPerSecond}";
+        if (monitors.Length > 1)
         {
-            string filter = (vendor, scaleTo) switch
+            string screens = string.Concat(monitors.Select((monitor, index) => $"{Grab(monitor)},hwdownload,format=bgra,pad=iw:{fullHeight}[m{index}];"));
+            string joined = $"{screens}{string.Concat(monitors.Select((_, index) => $"[m{index}]"))}hstack=inputs={monitors.Length}";
+            string resize = scaleTo is { } size ? $",scale={size.Width}:{size.Height}:flags=fast_bilinear" : "";
+            foreach (string vendor in vendors)
             {
-                ("qsv", null) => $"{grab},hwmap=derive_device=qsv,format=qsv",
-                ("qsv", { } size) => $"{grab},hwmap=derive_device=qsv,format=qsv,vpp_qsv=w={size.Width}:h={size.Height}",
-                (_, null) => grab,
-                (_, { } size) => $"{grab},scale_d3d11=width={size.Width}:height={size.Height}:format=nv12",
-            };
-            yield return new CapturePipeline(filter, $"{settings.Codec}_{vendor}");
+                yield return new CapturePipeline($"{joined}{resize},format=nv12", $"{settings.Codec}_{vendor}");
+            }
+            yield break;
         }
-        string scale = scaleTo is { } to ? $"scale={to.Width}:{to.Height}:flags=fast_bilinear," : "";
+        string grab = Grab(monitors[0]) + (scaleTo is { } to ? $":width={to.Width}:height={to.Height}:resize_mode=scale" : "");
         foreach (string vendor in vendors)
         {
-            yield return new CapturePipeline($"{grab},hwdownload,format=bgra,{scale}format=nv12", $"{settings.Codec}_{vendor}");
+            yield return new CapturePipeline(vendor == "qsv" ? $"{grab},hwmap=derive_device=qsv,format=qsv" : grab, $"{settings.Codec}_{vendor}");
+        }
+        foreach (string vendor in vendors)
+        {
+            yield return new CapturePipeline($"{grab},hwdownload,format=bgra,format=nv12", $"{settings.Codec}_{vendor}");
         }
     }
 
@@ -261,12 +272,25 @@ public sealed class ClipRecorder : IDisposable
             "-f", "lavfi", "-i", pipeline.Filter,
             "-map", "1:v", "-map", "0:a",
             "-c:v", pipeline.Encoder, "-b:v", $"{bitrate}k", "-maxrate", $"{bitrate * 3 / 2}k", "-bufsize", $"{bitrate * 2}k",
-            // A keyframe every second and no B-frames: every segment starts cleanly and can be cut at.
-            "-g", fps, "-bf", "0",
+            // The capture only delivers frames when the screen changes; a constant rate keeps one keyframe
+            // (and so one segment) per second. No B-frames: every segment starts cleanly and can be cut at.
+            "-fps_mode", "cfr", "-r", fps, "-g", fps, "-bf", "0",
             "-c:a", "aac", "-b:a", "160k",
             "-f", "segment", "-segment_time", "1", "-segment_format", "mpegts", segmentPattern,
         ];
     }
+
+    /// <summary>The Windows handle of the monitor that shows a point of the desktop (0 when there is none).</summary>
+    public static ulong MonitorAt(int x, int y) => (ulong)MonitorFromPoint(new ScreenPoint { X = x, Y = y }, 0);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct ScreenPoint
+    {
+        public int X, Y;
+    }
+
+    [DllImport("user32.dll")]
+    private static extern nint MonitorFromPoint(ScreenPoint point, uint flags);
 
     internal static Process Run(IEnumerable<string> arguments, bool hasInput)
     {

@@ -113,9 +113,11 @@ Console.WriteLine("Equalizer check passed.");
     Expect(string.Join(",", Ufo.Clips.ClipRecorder.LastSegments([1, 2, 3, 4, 5], 3)), "3,4,5", "last three seconds");
     Expect(string.Join(",", Ufo.Clips.ClipRecorder.LastSegments([1, 2], 30)), "1,2", "short buffer gives what it has");
 
-    var first = Ufo.Clips.ClipRecorder.Candidates(clips, null).First();
-    Expect(first, new Ufo.Clips.CapturePipeline("ddagrab=output_idx=0:framerate=60", "h264_nvenc"), "GPU-only pipeline first");
-    Expect(Ufo.Clips.ClipRecorder.Candidates(clips, (1280, 720)).Count(pipeline => pipeline.Filter.Contains("1280")), 8, "every scaled pipeline scales");
+    var first = Ufo.Clips.ClipRecorder.Candidates(clips, null, [65537], 1080).First();
+    Expect(first, new Ufo.Clips.CapturePipeline("gfxcapture=hmonitor=65537:max_framerate=60", "h264_nvenc"), "GPU-only pipeline first");
+    Expect(Ufo.Clips.ClipRecorder.Candidates(clips, (1280, 720), [65537], 1080).Count(pipeline => pipeline.Filter.Contains("width=1280:height=720:resize_mode=scale")), 8, "every scaled pipeline scales in the capture");
+    var both = Ufo.Clips.ClipRecorder.Candidates(clips, null, [7, 9], 1440).First();
+    Expect(both.Filter, "gfxcapture=hmonitor=7:max_framerate=60,hwdownload,format=bgra,pad=iw:1440[m0];gfxcapture=hmonitor=9:max_framerate=60,hwdownload,format=bgra,pad=iw:1440[m1];[m0][m1]hstack=inputs=2,format=nv12", "all monitors side by side, in the order given, padded to the tallest");
     string[] record = Ufo.Clips.ClipRecorder.RecordArguments(clips with { SyncMilliseconds = -40 }, first, 1920, 1080, "seg%06d.ts");
     Expect(record[Array.IndexOf(record, "-itsoffset") + 1], "-0.04", "sync offset in seconds, invariant culture");
     Expect(record[Array.IndexOf(record, "-g") + 1], "60", "a keyframe per second");
@@ -151,11 +153,15 @@ Console.WriteLine("Equalizer check passed.");
 }
 
 // Live smoke test of the replay buffer (needs a screen and ffmpeg): dotnet run --project tests/Ufo.Device.Check -- --clip <output.mp4>
-if (args is ["--clip", string clipOutput])
+if (args is ["--clip", string clipOutput, ..])
 {
     using var audio = new Ufo.Clips.ClipAudio();
     using var recorder = new Ufo.Clips.ClipRecorder(audio);
-    recorder.Start(new Ufo.Clips.ClipSettings(), 1920, 1080);
+    // Extra arguments: capture width, height, then one "x,y" point per monitor (left to right) and optionally "720p".
+    ulong[] monitors = [.. args.Skip(4).Where(arg => arg.Contains(',')).Select(arg => arg.Split(',')).Select(point => Ufo.Clips.ClipRecorder.MonitorAt(int.Parse(point[0]), int.Parse(point[1])))];
+    recorder.Start(new Ufo.Clips.ClipSettings(Height: args.Contains("720p") ? 720 : 0),
+        args.Length > 3 ? int.Parse(args[2]) : 1920, args.Length > 3 ? int.Parse(args[3]) : 1080,
+        monitors.Length > 0 ? monitors : [Ufo.Clips.ClipRecorder.MonitorAt(0, 0)]);
     Console.WriteLine($"Recording: {recorder.Description}");
     await Task.Delay(8000);
     Ufo.Clips.SavedClip? saved = await recorder.SaveClipAsync(5, clipOutput);

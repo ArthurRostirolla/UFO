@@ -119,13 +119,18 @@ public partial class MainWindow
         clipError = "";
         ShowClipState();
         ClipSettings settings = Clips;
-        System.Drawing.Rectangle screen = ClipScreen().Bounds;
+        Forms.Screen[] screens = Forms.Screen.AllScreens;
+        bool isAll = settings.Monitor == ClipSettings.AllMonitors && screens.Length > 1;
+        // All monitors: side by side in the order they sit on the desk, as tall as the tallest.
+        Forms.Screen[] captured = isAll ? [.. screens.OrderBy(screen => screen.Bounds.X)] : [ClipScreen()];
+        var capture = new System.Drawing.Size(captured.Sum(screen => screen.Bounds.Width), captured.Max(screen => screen.Bounds.Height));
+        ulong[] monitors = [.. captured.Select(screen => ClipRecorder.MonitorAt(screen.Bounds.X + screen.Bounds.Width / 2, screen.Bounds.Y + screen.Bounds.Height / 2))];
         try
         {
             if (isWanted)
             {
                 lastClipStart = clipClock.Elapsed;
-                await Task.Run(() => clipRecorder.Start(settings, screen.Width, screen.Height));
+                await Task.Run(() => clipRecorder.Start(settings, capture.Width, capture.Height, monitors));
             }
             else
             {
@@ -145,8 +150,7 @@ public partial class MainWindow
         }
     }
 
-    // ponytail: assumes Windows lists monitors in the same order as the GPU does (true for one monitor
-    // and for the usual setups); a mismatch records the other screen: pick the other number.
+    /// <summary>The chosen monitor; the first one when every monitor is recorded (it hosts the on-screen notice).</summary>
     private Forms.Screen ClipScreen()
     {
         Forms.Screen[] screens = Forms.Screen.AllScreens;
@@ -454,8 +458,8 @@ public partial class MainWindow
         Panel video = AddClipSection("Vídeo");
         if (Forms.Screen.AllScreens.Length > 1)
         {
-            AddClipChoice(video, "Monitor", [.. Forms.Screen.AllScreens.Select((_, index) => ($"{index + 1}", index))],
-                settings => settings.Monitor, (settings, monitor) => settings with { Monitor = monitor });
+            AddClipChoice(video, "Monitor", [.. Forms.Screen.AllScreens.Select((_, index) => ($"{index + 1}", index)), ("Ambos", ClipSettings.AllMonitors)],
+                settings => settings.Monitor, (settings, monitor) => settings with { Monitor = monitor }, decorate: ShowMonitorPreviewOnHover);
         }
         AddClipChoice(video, "Resolução", [("Nativa", 0), ("1440p", 1440), ("1080p", 1080), ("720p", 720)],
             settings => settings.Height, (settings, height) => settings with { Height = height });
@@ -531,7 +535,7 @@ public partial class MainWindow
 
     /// <summary>Label and a few named options; only one is on.</summary>
     private void AddClipChoice<T>(Panel rows, string label, (string Text, T Value)[] options, Func<ClipSettings, T> read,
-        Func<ClipSettings, T, ClipSettings> write, bool restarts = true)
+        Func<ClipSettings, T, ClipSettings> write, bool restarts = true, Action<RadioButton, T>? decorate = null)
     {
         var grid = new Grid { MinHeight = 44 };
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(170) });
@@ -548,12 +552,48 @@ public partial class MainWindow
                 }
             };
             clipRefreshers.Add(() => chip.IsChecked = Equals(read(Clips), value));
+            decorate?.Invoke(chip, value);
             chips.Children.Add(chip);
         }
         Grid.SetColumn(chips, 1);
         grid.Children.Add(new TextBlock { Text = label, FontSize = 14, VerticalAlignment = VerticalAlignment.Center });
         grid.Children.Add(chips);
         rows.Children.Add(grid);
+    }
+
+    /// <summary>Hovering a monitor option shows what is on that screen right now, so "1" and "2" need no guessing.</summary>
+    private static void ShowMonitorPreviewOnHover(RadioButton chip, int monitor)
+    {
+        var picture = new Image { Width = 360 };
+        var caption = new TextBlock { FontSize = 12, Margin = new Thickness(0, 6, 0, 0) };
+        var preview = new StackPanel();
+        preview.Children.Add(picture);
+        preview.Children.Add(caption);
+        chip.ToolTip = new ToolTip { Content = preview };
+        ToolTipService.SetInitialShowDelay(chip, 150);
+        ToolTipService.SetShowDuration(chip, 60000);
+        chip.ToolTipOpening += (_, _) =>
+        {
+            Forms.Screen[] screens = Forms.Screen.AllScreens;
+            Forms.Screen[] shown = monitor == ClipSettings.AllMonitors ? screens : [screens[Math.Clamp(monitor, 0, screens.Length - 1)]];
+            System.Drawing.Rectangle area = shown.Select(screen => screen.Bounds).Aggregate(System.Drawing.Rectangle.Union);
+            using var full = new System.Drawing.Bitmap(area.Width, area.Height);
+            using (System.Drawing.Graphics graphics = System.Drawing.Graphics.FromImage(full))
+            {
+                graphics.CopyFromScreen(area.Location, System.Drawing.Point.Empty, area.Size);
+            }
+            using var small = new System.Drawing.Bitmap(full, 720, Math.Max(1, 720 * area.Height / area.Width));
+            using var stream = new MemoryStream();
+            small.Save(stream, System.Drawing.Imaging.ImageFormat.Png);
+            stream.Position = 0;
+            var bitmap = new BitmapImage();
+            bitmap.BeginInit();
+            bitmap.CacheOption = BitmapCacheOption.OnLoad;
+            bitmap.StreamSource = stream;
+            bitmap.EndInit();
+            picture.Source = bitmap;
+            caption.Text = string.Join("  +  ", shown.Select(screen => $"{screen.Bounds.Width}×{screen.Bounds.Height}{(screen.Primary ? " · principal" : "")}"));
+        };
     }
 
     /// <summary>Like <see cref="AddSliderRow"/>, with the row's own step and wording for the value.</summary>
