@@ -1,0 +1,55 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <!-- Windows Forms only for the notification-area icon and the colour dialog. -->
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>UFO</AssemblyName>
+    <RootNamespace>Ufo</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>ufo.ico</ApplicationIcon>
+    <!-- ThemeMode (Fluent dark) is still flagged experimental in WPF. -->
+    <NoWarn>$(NoWarn);WPF0001</NoWarn>
+    <!-- WFO0003 asks WinForms apps to set DPI in code; this is a WPF app, where the manifest is the right place. -->
+    <NoWarn>$(NoWarn);WFO0003</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Resource Include="ufo.ico" />
+  </ItemGroup>
+
+  <!-- Windows Forms is referenced by full name; its implicit usings would clash with WPF types. -->
+  <ItemGroup>
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+  </ItemGroup>
+
+  <!-- UFO Engine files travel in an "engine" folder beside the app: the native DLL (built from
+       C:\UFO\engine) and the elevated installer. -->
+  <ItemGroup>
+    <None Include="..\..\engine\build\UfoApo.dll" Link="engine\UfoApo.dll" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\..\engine\build\UfoApo.dll')" />
+    <ProjectReference Include="..\Ufo.EngineCtl\Ufo.EngineCtl.csproj" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+  <Target Name="CopyEngineCtl" AfterTargets="Build">
+    <ItemGroup>
+      <EngineCtlFiles Include="..\Ufo.EngineCtl\bin\$(Configuration)\net10.0-windows\ufo-enginectl.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(EngineCtlFiles)" DestinationFolder="$(OutDir)engine" SkipUnchangedFiles="true" />
+  </Target>
+  <Target Name="PublishEngineCtl" AfterTargets="Publish">
+    <ItemGroup>
+      <EngineCtlPublishFiles Include="..\Ufo.EngineCtl\bin\$(Configuration)\net10.0-windows\ufo-enginectl.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(EngineCtlPublishFiles)" DestinationFolder="$(PublishDir)engine" SkipUnchangedFiles="true" />
+  </Target>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Ufo.Device\Ufo.Device.csproj" />
+    <ProjectReference Include="..\Ufo.Audio\Ufo.Audio.csproj" />
+  </ItemGroup>
+
+</Project>

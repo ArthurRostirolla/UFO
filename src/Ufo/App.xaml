@@ -1,0 +1,520 @@
+<Application x:Class="Ufo.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             StartupUri="MainWindow.xaml"
+             ThemeMode="Dark">
+    <Application.Resources>
+        <!-- Tokens. Colours are dynamic: the settings screen recolours the app live (Appearance.cs).
+             Spacing scale (px): 4 · 8 · 12 · 16 · 24 · 32 · 48. Label→control 12, rows 16, groups 32, title→content 32. -->
+        <SolidColorBrush x:Key="BgBrush" Color="#0B0B0C" />
+        <SolidColorBrush x:Key="InkBrush" Color="#EDEDEA" />
+        <!-- 5.9:1 on the darkest background; small labels need at least 4.5:1. -->
+        <SolidColorBrush x:Key="MutedBrush" Color="#8E8E86" />
+        <SolidColorBrush x:Key="LineBrush" Color="#232322" />
+        <SolidColorBrush x:Key="RingBrush" Color="#34342F" />
+        <SolidColorBrush x:Key="SurfaceBrush" Color="#171716" />
+        <SolidColorBrush x:Key="ControlBorderBrush" Color="#3A3A36" />
+        <SolidColorBrush x:Key="TrackBrush" Color="#2EEDEDEA" />
+        <SolidColorBrush x:Key="AccentBrush" Color="#FF5A1F" />
+        <SolidColorBrush x:Key="AccentWashBrush" Color="#1AFF5A1F" />
+        <SolidColorBrush x:Key="LowBrush" Color="#FF5A5A" />
+        <SolidColorBrush x:Key="ErrorBrush" Color="#FF8A80" />
+        <FontFamily x:Key="MonoFont">Cascadia Mono, Consolas</FontFamily>
+        <FontFamily x:Key="TextFont">Segoe UI Variable Text, Segoe UI</FontFamily>
+
+        <!-- Keyboard focus: an accent ring a little outside the control (square and round versions). -->
+        <Style x:Key="FocusRing">
+            <Setter Property="Control.Template">
+                <Setter.Value>
+                    <ControlTemplate>
+                        <Rectangle Margin="-4" RadiusX="4" RadiusY="4" Stroke="{DynamicResource AccentBrush}" StrokeThickness="1.5" SnapsToDevicePixels="True" />
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="FocusRingRound">
+            <Setter Property="Control.Template">
+                <Setter.Value>
+                    <ControlTemplate>
+                        <Ellipse Margin="-4" Stroke="{DynamicResource AccentBrush}" StrokeThickness="1.5" />
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Type: lowercase brand titles; sentence-case headings and labels; mono only for numbers. -->
+        <Style x:Key="PanelTitle" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="{StaticResource TextFont}" />
+            <Setter Property="FontSize" Value="36" />
+            <Setter Property="FontWeight" Value="Medium" />
+            <Setter Property="Foreground" Value="{DynamicResource InkBrush}" />
+        </Style>
+        <Style x:Key="SectionHeading" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="{StaticResource TextFont}" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{DynamicResource InkBrush}" />
+            <Setter Property="Margin" Value="0,0,0,12" />
+        </Style>
+        <Style x:Key="Kicker" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="{StaticResource TextFont}" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
+            <Setter Property="Margin" Value="0,0,0,4" />
+        </Style>
+        <Style x:Key="Hint" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style x:Key="Value" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="{StaticResource MonoFont}" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Foreground" Value="{DynamicResource InkBrush}" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="HorizontalAlignment" Value="Right" />
+        </Style>
+        <!-- A group of settings: hairline on top, 24 above its heading, 32 below its last row. -->
+        <Style x:Key="Section" TargetType="Border">
+            <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}" />
+            <Setter Property="BorderThickness" Value="0,1,0,0" />
+            <Setter Property="Padding" Value="0,24,0,32" />
+        </Style>
+
+        <!-- Text option with an accent underline when chosen (segmented choice). -->
+        <Style x:Key="SegOption" TargetType="RadioButton">
+            <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
+            <Setter Property="FontSize" Value="16" />
+            <Setter Property="Margin" Value="0,0,24,8" />
+            <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <StackPanel Background="Transparent">
+                            <ContentPresenter Margin="0,4" />
+                            <Rectangle x:Name="Underline" Height="2" Fill="Transparent" />
+                        </StackPanel>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Foreground" Value="{DynamicResource InkBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter Property="Foreground" Value="{DynamicResource InkBrush}" />
+                                <Setter TargetName="Underline" Property="Fill" Value="{DynamicResource AccentBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.35" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Preset chip: plain text, accent when chosen. -->
+        <Style x:Key="Chip" TargetType="RadioButton">
+            <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Margin" Value="0,0,18,6" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <ContentPresenter Margin="0,2" />
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Foreground" Value="{DynamicResource InkBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Square switch: label on the left, knob slides right in the accent colour. -->
+        <Style x:Key="Switch" TargetType="CheckBox">
+            <Setter Property="Foreground" Value="{DynamicResource InkBrush}" />
+            <Setter Property="FontSize" Value="16" />
+            <Setter Property="Padding" Value="0,12" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="CheckBox">
+                        <Grid Background="Transparent" Margin="{TemplateBinding Padding}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <ContentPresenter VerticalAlignment="Center" />
+                            <Border x:Name="Track" Grid.Column="1" Width="34" Height="18" CornerRadius="4" Margin="16,0,0,0"
+                                    BorderThickness="1" BorderBrush="{DynamicResource ControlBorderBrush}" VerticalAlignment="Center">
+                                <Border x:Name="Knob" Width="10" Height="10" CornerRadius="2" Margin="3,0" HorizontalAlignment="Left"
+                                        Background="{DynamicResource MutedBrush}">
+                                    <Border.RenderTransform>
+                                        <TranslateTransform x:Name="KnobShift" />
+                                    </Border.RenderTransform>
+                                </Border>
+                            </Border>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Track" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                                <Setter TargetName="Knob" Property="Background" Value="{DynamicResource AccentBrush}" />
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="KnobShift" Storyboard.TargetProperty="X" To="16" Duration="0:0:0.2">
+                                                <DoubleAnimation.EasingFunction><QuinticEase EasingMode="EaseOut" /></DoubleAnimation.EasingFunction>
+                                            </DoubleAnimation>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.EnterActions>
+                                <Trigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="KnobShift" Storyboard.TargetProperty="X" To="0" Duration="0:0:0.2">
+                                                <DoubleAnimation.EasingFunction><QuinticEase EasingMode="EaseOut" /></DoubleAnimation.EasingFunction>
+                                            </DoubleAnimation>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.ExitActions>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.35" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Orbit moon: round button, filled with the accent when its section is open. -->
+        <Style x:Key="Moon" TargetType="RadioButton">
+            <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRingRound}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Grid Width="62" Height="62">
+                            <Ellipse x:Name="Disc" Fill="{DynamicResource BgBrush}" Stroke="{DynamicResource LineBrush}" />
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Foreground" Value="{DynamicResource InkBrush}" />
+                                <Setter TargetName="Disc" Property="Stroke" Value="{DynamicResource ControlBorderBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter Property="Foreground" Value="{DynamicResource BgBrush}" />
+                                <Setter TargetName="Disc" Property="Fill" Value="{DynamicResource AccentBrush}" />
+                                <Setter TargetName="Disc" Property="Stroke" Value="{DynamicResource AccentBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Accent swatch: a colour dot (Tag holds the brush); the chosen one gets an ink ring. -->
+        <Style x:Key="Swatch" TargetType="RadioButton">
+            <Setter Property="Width" Value="44" />
+            <Setter Property="Height" Value="44" />
+            <Setter Property="Margin" Value="0,0,12,12" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRingRound}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Grid Background="Transparent">
+                            <Ellipse x:Name="Ring" Stroke="Transparent" StrokeThickness="2" />
+                            <Ellipse x:Name="Dot" Margin="5" Fill="{TemplateBinding Tag}" RenderTransformOrigin="0.5,0.5">
+                                <Ellipse.RenderTransform><ScaleTransform x:Name="DotScale" /></Ellipse.RenderTransform>
+                            </Ellipse>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Dot" Property="Margin" Value="3" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Ring" Property="Stroke" Value="{DynamicResource InkBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Background theme card: a sample of the page colour with an accent dot, and its name. -->
+        <Style x:Key="ThemeCard" TargetType="RadioButton">
+            <Setter Property="Width" Value="140" />
+            <Setter Property="Margin" Value="0,0,12,12" />
+            <Setter Property="Foreground" Value="{DynamicResource InkBrush}" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="Card" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="8" Padding="10" Background="Transparent">
+                            <StackPanel>
+                                <Border Height="46" CornerRadius="5" Background="{TemplateBinding Tag}" Margin="0,0,0,8">
+                                    <Ellipse Width="10" Height="10" Fill="{DynamicResource AccentBrush}" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="10" />
+                                </Border>
+                                <ContentPresenter />
+                            </StackPanel>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Card" Property="BorderBrush" Value="{DynamicResource MutedBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Card" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Main action ("Salvar"): solid accent; when there is nothing to do it fades to a quiet outline. -->
+        <Style x:Key="PrimaryButton" TargetType="Button">
+            <Setter Property="Foreground" Value="{DynamicResource BgBrush}" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontWeight" Value="Medium" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Surface" Background="{DynamicResource AccentBrush}" BorderBrush="{DynamicResource AccentBrush}"
+                                BorderThickness="1" CornerRadius="4" Padding="20,8">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Surface" Property="Opacity" Value="0.88" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Surface" Property="Opacity" Value="0.75" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Surface" Property="Background" Value="Transparent" />
+                                <Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource LineBrush}" />
+                                <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Title-bar buttons: bare glyphs, a soft wash on hover, the accent behind close. -->
+        <!-- Secondary action inside the content: outlined, quieter than PrimaryButton. -->
+        <Style x:Key="QuietButton" TargetType="Button">
+            <Setter Property="Foreground" Value="{DynamicResource InkBrush}" />
+            <Setter Property="FontFamily" Value="{StaticResource TextFont}" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Padding" Value="14,0" />
+            <Setter Property="Height" Value="36" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Surface" Background="Transparent" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1"
+                                CornerRadius="4" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Surface" Property="Background" Value="#14FFFFFF" />
+                                <Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource MutedBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Surface" Property="Background" Value="#0AFFFFFF" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.45" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="CaptionButton" TargetType="Button">
+            <Setter Property="Width" Value="46" />
+            <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}" />
+            <Setter Property="Height" Value="40" />
+            <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
+            <Setter Property="FontFamily" Value="Segoe Fluent Icons" />
+            <Setter Property="FontSize" Value="10" />
+            <Setter Property="WindowChrome.IsHitTestVisibleInChrome" Value="True" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Surface" Background="Transparent">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <!-- The maximize button is hit-tested by Windows (Snap Layouts), so its hover arrives as Tag. -->
+                            <Trigger Property="Tag" Value="hover">
+                                <Setter TargetName="Surface" Property="Background" Value="#14FFFFFF" />
+                                <Setter Property="Foreground" Value="{DynamicResource InkBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Surface" Property="Background" Value="#14FFFFFF" />
+                                <Setter Property="Foreground" Value="{DynamicResource InkBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Surface" Property="Background" Value="#0AFFFFFF" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="CloseCaptionButton" TargetType="Button" BasedOn="{StaticResource CaptionButton}">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Surface" Background="Transparent">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Surface" Property="Background" Value="{DynamicResource AccentBrush}" />
+                                <Setter Property="Foreground" Value="{DynamicResource BgBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Sliders: hairline track, accent fill up to the value, small round thumb that grows on hover. -->
+        <Style x:Key="SliderRail" TargetType="RepeatButton">
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="IsTabStop" Value="False" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RepeatButton">
+                        <Border Background="Transparent">
+                            <Border Background="{TemplateBinding Background}" CornerRadius="1"
+                                    Width="{TemplateBinding Width}" Height="{TemplateBinding Height}" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="SliderKnob" TargetType="Thumb">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Thumb">
+                        <Grid Width="18" Height="18" Background="Transparent">
+                            <Ellipse x:Name="Knob" Width="12" Height="12" Fill="{DynamicResource AccentBrush}" />
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Knob" Property="Width" Value="16" />
+                                <Setter TargetName="Knob" Property="Height" Value="16" />
+                            </Trigger>
+                            <Trigger Property="IsDragging" Value="True">
+                                <Setter TargetName="Knob" Property="Fill" Value="{DynamicResource InkBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="Slider">
+            <Setter Property="IsMoveToPointEnabled" Value="True" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Slider">
+                        <Track x:Name="PART_Track" MinHeight="18" VerticalAlignment="Center">
+                            <Track.DecreaseRepeatButton>
+                                <RepeatButton Style="{StaticResource SliderRail}" Command="Slider.DecreaseLarge" Height="2" Background="{DynamicResource AccentBrush}" />
+                            </Track.DecreaseRepeatButton>
+                            <Track.IncreaseRepeatButton>
+                                <RepeatButton Style="{StaticResource SliderRail}" Command="Slider.IncreaseLarge" Height="2" Background="{DynamicResource TrackBrush}" />
+                            </Track.IncreaseRepeatButton>
+                            <Track.Thumb>
+                                <Thumb Style="{StaticResource SliderKnob}" />
+                            </Track.Thumb>
+                        </Track>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.35" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="Orientation" Value="Vertical">
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="Slider">
+                                <Track x:Name="PART_Track" MinWidth="18" HorizontalAlignment="Center" Orientation="Vertical">
+                                    <Track.DecreaseRepeatButton>
+                                        <RepeatButton Style="{StaticResource SliderRail}" Command="Slider.DecreaseLarge" Width="2" Background="{DynamicResource TrackBrush}" />
+                                    </Track.DecreaseRepeatButton>
+                                    <Track.IncreaseRepeatButton>
+                                        <RepeatButton Style="{StaticResource SliderRail}" Command="Slider.IncreaseLarge" Width="2" Background="{DynamicResource TrackBrush}" />
+                                    </Track.IncreaseRepeatButton>
+                                    <Track.Thumb>
+                                        <Thumb Style="{StaticResource SliderKnob}" />
+                                    </Track.Thumb>
+                                </Track>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsEnabled" Value="False">
+                                        <Setter Property="Opacity" Value="0.35" />
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Saucer (200×92 artboard): dome, lens hull, light band, windows and hatch.
+             Strokes use the page background, so the layers read as separate line-art parts. -->
+        <!-- "Casco branco": white hull and band; orange only on the dome, windows and hatch. -->
+        <SolidColorBrush x:Key="UfoBandBrush" Color="#EDEDEA" />
+        <SolidColorBrush x:Key="UfoLightBrush" Color="#FF5A1F" />
+        <Geometry x:Key="LensGeometry">M14,52 C52,20 148,20 186,52 C150,88 50,88 14,52 Z</Geometry>
+        <Style x:Key="UfoIcon" TargetType="ContentControl">
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="Background" Value="{DynamicResource BgBrush}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ContentControl">
+                        <Viewbox Stretch="Uniform">
+                            <Canvas Width="200" Height="92">
+                                <Path Data="M70,32 a30,30 0 0 1 60,0" Fill="{DynamicResource AccentBrush}" Stroke="{TemplateBinding Background}" StrokeThickness="7" StrokeLineJoin="Round" />
+                                <Path Data="{StaticResource LensGeometry}" Fill="{DynamicResource InkBrush}" />
+                                <Path Data="M0,48 H52 v-5 h8 v5 h10 v-6 h12 v6 H200 V102 H0 Z" Fill="{DynamicResource UfoBandBrush}" Clip="{StaticResource LensGeometry}" />
+                                <Path Data="{StaticResource LensGeometry}" Stroke="{TemplateBinding Background}" StrokeThickness="7" StrokeLineJoin="Round" />
+                                <Rectangle Canvas.Left="42" Canvas.Top="56" Width="13" Height="5.5" RadiusX="2.75" RadiusY="2.75" Fill="{DynamicResource UfoLightBrush}" RenderTransformOrigin="0.5,0.5"><Rectangle.RenderTransform><RotateTransform Angle="12" /></Rectangle.RenderTransform></Rectangle>
+                                <Rectangle Canvas.Left="71" Canvas.Top="57" Width="10" Height="5.5" RadiusX="2.75" RadiusY="2.75" Fill="{DynamicResource UfoLightBrush}" RenderTransformOrigin="0.5,0.5"><Rectangle.RenderTransform><RotateTransform Angle="50" /></Rectangle.RenderTransform></Rectangle>
+                                <Ellipse Canvas.Left="96" Canvas.Top="56" Width="8" Height="8" Fill="{DynamicResource UfoLightBrush}" />
+                                <Rectangle Canvas.Left="119" Canvas.Top="57" Width="10" Height="5.5" RadiusX="2.75" RadiusY="2.75" Fill="{DynamicResource UfoLightBrush}" RenderTransformOrigin="0.5,0.5"><Rectangle.RenderTransform><RotateTransform Angle="-50" /></Rectangle.RenderTransform></Rectangle>
+                                <Rectangle Canvas.Left="145" Canvas.Top="56" Width="13" Height="5.5" RadiusX="2.75" RadiusY="2.75" Fill="{DynamicResource UfoLightBrush}" RenderTransformOrigin="0.5,0.5"><Rectangle.RenderTransform><RotateTransform Angle="-12" /></Rectangle.RenderTransform></Rectangle>
+                                <Ellipse Canvas.Left="68.5" Canvas.Top="69" Width="63" Height="20" Fill="{DynamicResource AccentBrush}" Stroke="{TemplateBinding Background}" StrokeThickness="7" />
+                            </Canvas>
+                        </Viewbox>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Application.Resources>
+</Application>
