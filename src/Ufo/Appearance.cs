@@ -9,7 +9,7 @@ namespace Ufo;
 public sealed record AppTheme(string Name, Color Background, Color Line, Color Ring);
 
 /// <summary>App preferences from the settings screen; applied right away and kept in %AppData%\UFO.</summary>
-public sealed record AppPreferences(string AccentHex, string ThemeName, bool RunInBackground, bool ShowAdvanced = false, Ufo.Clips.ClipSettings? Clips = null)
+public sealed record AppPreferences(string AccentHex, string ThemeName, bool RunInBackground, bool ShowAdvanced = false, Ufo.Clips.ClipSettings? Clips = null, double? MicHeldVolume = null)
 {
     public static AppPreferences Default => new("#FF5A1F", "Grafite", RunInBackground: false);
 }

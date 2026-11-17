@@ -35,6 +35,7 @@ public partial class MainWindow : Window
         InitializeM274();
         InitializeSettings();
         InitializeClips();
+        InitializeMicWatch();
         StartFloating();
         WindowsStartup.Sync();
         SyncTrayIcon();
@@ -84,7 +85,8 @@ public partial class MainWindow : Window
     private async Task RefreshBatteryAsync()
     {
         bool wasLinked = isHeadsetLinked;
-        (bool? isLinked, BatteryState? battery) = await Task.Run(() => (headset.IsHeadsetLinked(), headset.GetBattery()));
+        (bool? isLinked, BatteryState? battery, bool? isBoomAttached) = await Task.Run(() => (headset.IsHeadsetLinked(), headset.GetBattery(), headset.IsBoomMicAttached()));
+        NoteHeadsetForMicWatch(isLinked, isBoomAttached);
         if (!wasLinked && isLinked == true)
         {
             // Headset came back (switched on or back in range): restore the saved profile on it.

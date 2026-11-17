@@ -55,6 +55,7 @@ public partial class MainWindow
         trayIcon?.Dispose();
         trayIcon = null;
         CloseClips();
+        CloseMicWatch();
         base.OnClosed(e);
     }
 

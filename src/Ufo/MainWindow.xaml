@@ -372,6 +372,22 @@
                                 </StackPanel>
                             </StackPanel>
                         </Border>
+                        <!-- Diagnosis: what UFO saw happen to the microphone while it was in use (MainWindow.MicWatch.cs). -->
+                        <Border Style="{StaticResource Section}">
+                            <StackPanel>
+                                <TextBlock Text="Diagnóstico" Style="{StaticResource SectionHeading}" />
+                                <TextBlock x:Name="MicWatchStateText" Style="{StaticResource Hint}" FontSize="13" TextWrapping="Wrap" Margin="0,0,0,16" />
+                                <StackPanel x:Name="MicWatchConclusions" />
+                                <CheckBox x:Name="MicHoldVolumeCheck" Style="{StaticResource Switch}" MinHeight="44" Click="OnMicHoldVolumeClick"
+                                          AutomationProperties.Name="Segurar o volume do microfone"
+                                          ToolTip="Quando um programa muda o volume do microfone no Windows, o UFO coloca de volta. Liga sozinho na primeira vez que isso acontece durante uma chamada.">
+                                    <TextBlock x:Name="MicHoldVolumeText" Text="Segurar o volume do microfone" FontSize="14" />
+                                </CheckBox>
+                                <TextBlock x:Name="MicWatchLogText" FontFamily="{StaticResource MonoFont}" FontSize="12" Foreground="{DynamicResource MutedBrush}"
+                                           TextWrapping="Wrap" Margin="0,12,0,0" />
+                                <Button Style="{StaticResource QuietButton}" HorizontalAlignment="Left" Margin="0,12,0,0" Content="Limpar registro" Click="OnMicLogClearClick" />
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
 
                     <!-- Configurações: colour engine and app behaviour, opened by the gear in the title bar.

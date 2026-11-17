@@ -187,3 +187,51 @@ if (args is ["--laughter", string modelPath, ..])
         }
     }
 }
+
+// ── Microphone watch ────────────────────────────────────────────────────────────────────────────
+{
+    var analyzer = new MicrophoneAnalyzer();
+    var found = new List<string>();
+    double second = 0;
+    void Hear(double levelDb, double seconds, double gap = 0)
+    {
+        for (double end = second + seconds; second < end; second += 0.1)
+        {
+            found.AddRange(analyzer.Feed(levelDb, gap, TimeSpan.FromSeconds(second)).Select(result => result.Kind));
+        }
+    }
+    Hear(-70, 2);            // room noise
+    Hear(-25, 5);            // talking
+    Hear(-70, 1);            // a pause is not a drop
+    Hear(-25, 3);
+    Expect(found.Count, 0, "normal speech with pauses raises nothing");
+    Hear(-45, 3);            // suddenly 20 dB quieter, still well above the noise
+    Expect(string.Join(",", found), MicrophoneEvent.Drop, "a drop mid-speech is caught once");
+    Hear(-25, 2);
+    Expect(found.Last(), MicrophoneEvent.Recovered, "and its recovery");
+    Hear(-25, 0.1, gap: 400);
+    Expect(found.Last(), MicrophoneEvent.Stall, "a 400 ms hole is a stall");
+
+    DateTime at = new(2026, 11, 17, 10, 0, 0);
+    var log = new List<MicrophoneEvent> { new(at, MicrophoneEvent.Volume, ""), new(at.AddSeconds(2), MicrophoneEvent.Drop, ""), new(at.AddMinutes(5), MicrophoneEvent.Drop, "") };
+    IReadOnlyList<string> conclusions = MicrophoneDiagnosis.Conclude(log);
+    Expect(conclusions.Count, 2, "volume changes and unexplained drops are told apart");
+    Expect(conclusions[1].Contains("1 vez"), true, "the drop right after a volume change is not counted as unexplained");
+
+    Console.WriteLine("Microphone watch check passed.");
+}
+
+// Live: follow the headset microphone for a while and print what happens: dotnet run --project tests/Ufo.Device.Check -- --mic-watch 20
+if (args is ["--mic-watch", string watchSeconds])
+{
+    using var watch = new MicrophoneWatch(isAlwaysListening: true);
+    watch.Happened += found => Console.WriteLine($"{found.At:HH:mm:ss.f} [{found.Kind}] {found.Text}");
+    for (int second = 0; second < int.Parse(watchSeconds); second++)
+    {
+        await Task.Delay(1000);
+        if (second % 5 == 4)
+        {
+            Console.WriteLine($"  listening={watch.IsListening} level={watch.LevelDb:0} dB volume={watch.Volume:P0} users=[{string.Join(", ", watch.Users)}]");
+        }
+    }
+}
