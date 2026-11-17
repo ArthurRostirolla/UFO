@@ -11,7 +11,7 @@ endif()
 add_library(ufo_dsp STATIC
   dsp/biquad.cpp
   dsp/limiter.cpp
-  dsp/engine.cpp
+  dsp/output.cpp
   dsp/voice.cpp)
 target_include_directories(ufo_dsp PUBLIC dsp)
 

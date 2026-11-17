@@ -6,7 +6,7 @@ call "%ProgramFiles(x86)%\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\B
 if not exist "%~dp0build" mkdir "%~dp0build"
 cd /d "%~dp0build"
 
-set DSP=..\dsp\biquad.cpp ..\dsp\limiter.cpp ..\dsp\engine.cpp ..\dsp\voice.cpp
+set DSP=..\dsp\biquad.cpp ..\dsp\limiter.cpp ..\dsp\output.cpp ..\dsp\voice.cpp
 set FLAGS=/nologo /std:c++20 /O2 /W4 /EHsc /permissive- /MT /DUNICODE /D_UNICODE /DNOMINMAX /I ..\dsp /I ..\apo
 
 cl %FLAGS% ..\tests\main.cpp %DSP% /Fe:ufo_dsp_tests.exe || exit /b 1

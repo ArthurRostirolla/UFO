@@ -13,7 +13,7 @@
 #include <cstdio>
 #include <new>
 
-#include "engine.h"
+#include "output.h"
 #include "ipc.h"
 
 namespace {
@@ -219,7 +219,7 @@ public:
         if (!canProcess_) return S_OK;  // unknown format: stay loaded as a pass-through
 
         // Until the app writes settings, both chains are bit-exact pass-throughs.
-        m274::EngineParams renderOff;
+        m274::OutputParams renderOff;
         renderOff.enabled = 0;
         m274::VoiceParams voiceOff;
         voiceOff.enabled = 0;
@@ -227,8 +227,8 @@ public:
             voice_.prepare(sampleRate_);
             voice_.setParams(voiceOff);
         } else {
-            engine_.prepare(sampleRate_);
-            engine_.setParams(renderOff);
+            output_.prepare(sampleRate_);
+            output_.setParams(renderOff);
         }
         paramsFile_.open(isCapture_ ? m274::ipc::kCaptureParamsPath : m274::ipc::kRenderParamsPath, false,
                          isCapture_ ? sizeof(m274::ipc::VoiceParamsFile) : sizeof(m274::ipc::ParamsFile));
@@ -267,7 +267,7 @@ public:
             if (isCapture_) {
                 voice_.process(samples, frames, channels_);
             } else {
-                engine_.process(samples, frames, channels_);
+                output_.process(samples, frames, channels_);
             }
             isSilent = false;  // the limiter may still be releasing its delayed tail
             publishMeters(samples, frames);
@@ -319,15 +319,15 @@ private:
             if (header[1] != before) return;  // the app was mid-write; try again next block
             voice_.setParams(copy);
         } else {
-            m274::EngineParams copy;
+            m274::OutputParams copy;
             CopyMemory(&copy, payload, sizeof(copy));
             if (header[1] != before) return;
-            engine_.setParams(copy);
+            output_.setParams(copy);
         }
         appliedSequence_ = before;
     }
 
-    std::size_t latencyFrames() const { return isCapture_ ? voice_.latencyFrames() : engine_.latencyFrames(); }
+    std::size_t latencyFrames() const { return isCapture_ ? voice_.latencyFrames() : output_.latencyFrames(); }
 
     void publishMeters(const float* samples, UINT32 frames) {
         auto* meters = static_cast<m274::ipc::MetersFile*>(metersFile_.view);
@@ -341,13 +341,13 @@ private:
         meters->magic = m274::ipc::kMagic;
         meters->peakLeft = peakLeft;
         meters->peakRight = peakRight;
-        meters->limiterGain = static_cast<float>(isCapture_ ? voice_.takeLimiterMinGain() : engine_.takeLimiterMinGain());
-        meters->headroomDb = isCapture_ ? 0.0f : static_cast<float>(engine_.headroomDb());
+        meters->limiterGain = static_cast<float>(isCapture_ ? voice_.takeLimiterMinGain() : output_.takeLimiterMinGain());
+        meters->headroomDb = isCapture_ ? 0.0f : static_cast<float>(output_.headroomDb());
         meters->sampleRate = sampleRate_;
         meters->channels = channels_;
         meters->latencyFrames = static_cast<std::uint32_t>(latencyFrames());
         if (!isCapture_) {
-            CopyMemory(meters->spectrum, engine_.spectrum().data(), sizeof(meters->spectrum));
+            CopyMemory(meters->spectrum, output_.spectrum().data(), sizeof(meters->spectrum));
         }
         meters->paramsSequence = appliedSequence_;
         meters->blocks = ++blocks_;
@@ -359,7 +359,7 @@ private:
     UINT32 channels_ = 0;
     float sampleRate_ = 0;
     std::uint32_t appliedSequence_ = 0xffffffff, blocks_ = 0;
-    m274::Engine engine_;      // render endpoints
+    m274::OutputChain output_;      // render endpoints
     m274::VoiceChain voice_;   // capture endpoints
     MappedFile paramsFile_, metersFile_;
 };

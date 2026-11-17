@@ -1,4 +1,4 @@
-#include "engine.h"
+#include "output.h"
 
 #include <algorithm>
 #include <cmath>
@@ -31,7 +31,7 @@ double unit(float value) { return std::clamp(static_cast<double>(value), 0.0, 1.
 
 }  // namespace
 
-void Engine::prepare(double sampleRate) {
+void OutputChain::prepare(double sampleRate) {
     sampleRate_ = sampleRate;
     limiter_.prepare(sampleRate);
     for (auto& channel : state_) {
@@ -64,10 +64,10 @@ void Engine::prepare(double sampleRate) {
     glideLeft_ = 0;
 }
 
-void Engine::setParams(const EngineParams& params) {
+void OutputChain::setParams(const OutputParams& params) {
     params_ = params;
-    params_.bandCount = std::min<std::uint32_t>(params_.bandCount, EngineParams::kMaxBands);
-    for (std::size_t i = 0; i < EngineParams::kMaxBands; ++i) {
+    params_.bandCount = std::min<std::uint32_t>(params_.bandCount, OutputParams::kMaxBands);
+    for (std::size_t i = 0; i < OutputParams::kMaxBands; ++i) {
         target_[i] = i < params_.bandCount ? design(params_.bands[i], sampleRate_) : BiquadCoeffs{};
     }
 
@@ -88,7 +88,7 @@ void Engine::setParams(const EngineParams& params) {
     double trim = std::clamp(static_cast<double>(params_.trimDb), -24.0, 12.0);
     gainTarget_ = dbToGain(headroomDb_ + trim);
 
-    for (std::size_t i = 0; i < EngineParams::kMaxBands; ++i) {
+    for (std::size_t i = 0; i < OutputParams::kMaxBands; ++i) {
         step_[i] = {(target_[i].b0 - coeffs_[i].b0) / kGlideFrames, (target_[i].b1 - coeffs_[i].b1) / kGlideFrames,
                     (target_[i].b2 - coeffs_[i].b2) / kGlideFrames, (target_[i].a1 - coeffs_[i].a1) / kGlideFrames,
                     (target_[i].a2 - coeffs_[i].a2) / kGlideFrames};
@@ -96,7 +96,7 @@ void Engine::setParams(const EngineParams& params) {
     glideLeft_ = kGlideFrames;
 }
 
-double Engine::responseDb(double frequency) const {
+double OutputChain::responseDb(double frequency) const {
     double total = 0;
     for (std::size_t i = 0; i < params_.bandCount; ++i) {
         total += magnitudeDb(target_[i], sampleRate_, frequency);
@@ -104,7 +104,7 @@ double Engine::responseDb(double frequency) const {
     return total;
 }
 
-void Engine::process(float* samples, std::size_t frames, std::size_t channels) {
+void OutputChain::process(float* samples, std::size_t frames, std::size_t channels) {
     if (!params_.enabled || channels == 0) {
         return;  // untouched buffer: bit-exact bypass
     }
@@ -114,7 +114,7 @@ void Engine::process(float* samples, std::size_t frames, std::size_t channels) {
 
     for (std::size_t frame = 0; frame < frames; ++frame) {
         if (glideLeft_) {
-            for (std::size_t i = 0; i < EngineParams::kMaxBands; ++i) {
+            for (std::size_t i = 0; i < OutputParams::kMaxBands; ++i) {
                 coeffs_[i].b0 += step_[i].b0;
                 coeffs_[i].b1 += step_[i].b1;
                 coeffs_[i].b2 += step_[i].b2;
@@ -203,7 +203,7 @@ void Engine::process(float* samples, std::size_t frames, std::size_t channels) {
     }
 }
 
-void Engine::analyze() {
+void OutputChain::analyze() {
     for (std::size_t i = 0; i < kFftSize; ++i) {
         bins_[i] = ring_[i] * window_[i];
     }

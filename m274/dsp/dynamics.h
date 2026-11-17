@@ -1,5 +1,5 @@
 #pragma once
-// Small building blocks shared by the output chain (engine) and the microphone chain (voice).
+// Small building blocks shared by the output chain (output) and the microphone chain (voice).
 #include <algorithm>
 #include <array>
 #include <cmath>

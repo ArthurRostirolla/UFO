@@ -8,7 +8,7 @@
 #include <vector>
 
 #include "biquad.h"
-#include "engine.h"
+#include "output.h"
 #include "limiter.h"
 #include "voice.h"
 
@@ -50,53 +50,53 @@ int main() {
         }
     }
 
-    // Engine: bypass leaves the buffer bit-exact.
+    // OutputChain: bypass leaves the buffer bit-exact.
     {
-        Engine engine;
-        engine.prepare(48000);
-        EngineParams params;
+        OutputChain chain;
+        chain.prepare(48000);
+        OutputParams params;
         params.enabled = 0;
-        engine.setParams(params);
+        chain.setParams(params);
         std::vector<float> buffer(960), original;
         for (std::size_t i = 0; i < buffer.size(); ++i) buffer[i] = std::sin(i * 0.1f) * 0.5f;
         original = buffer;
-        engine.process(buffer.data(), 480, 2);
+        chain.process(buffer.data(), 480, 2);
         expect(buffer == original, "bypass is bit-exact");
     }
 
-    // Engine: headroom follows the real peak of overlapping bands (two +6 dB bands stack).
+    // OutputChain: headroom follows the real peak of overlapping bands (two +6 dB bands stack).
     {
-        Engine engine;
-        engine.prepare(48000);
-        EngineParams params;
+        OutputChain chain;
+        chain.prepare(48000);
+        OutputParams params;
         params.bandCount = 2;
         params.bands[0] = {BandType::Peak, 1000, 6, 1.0f};
         params.bands[1] = {BandType::Peak, 1100, 6, 1.0f};
-        engine.setParams(params);
-        expect(engine.headroomDb() < -10.5 && engine.headroomDb() > -12.1, "headroom covers stacked boosts");
+        chain.setParams(params);
+        expect(chain.headroomDb() < -10.5 && chain.headroomDb() > -12.1, "headroom covers stacked boosts");
         params.bandCount = 1;
         params.bands[0] = {BandType::Peak, 1000, -8, 1.0f};
-        engine.setParams(params);
-        expect(engine.headroomDb() == 0, "cuts need no headroom");
+        chain.setParams(params);
+        expect(chain.headroomDb() == 0, "cuts need no headroom");
     }
 
-    // Engine: a sine at a boosted band comes out at the predicted level (EQ + headroom).
+    // OutputChain: a sine at a boosted band comes out at the predicted level (EQ + headroom).
     {
-        Engine engine;
-        engine.prepare(48000);
-        EngineParams params;
+        OutputChain chain;
+        chain.prepare(48000);
+        OutputParams params;
         params.bandCount = 1;
         params.limiterEnabled = 0;
         params.bands[0] = {BandType::Peak, 100, 6, 1.41f};
-        engine.setParams(params);
+        chain.setParams(params);
         std::vector<float> buffer(48000 * 2);
         for (std::size_t i = 0; i < 48000; ++i) {
             buffer[2 * i] = buffer[2 * i + 1] = 0.5f * static_cast<float>(std::sin(2 * std::numbers::pi * 4000 * i / 48000.0));
         }
-        engine.process(buffer.data(), 48000, 2);
+        chain.process(buffer.data(), 48000, 2);
         float peak = 0;
         for (std::size_t i = 24000; i < 48000; ++i) peak = std::max(peak, std::abs(buffer[2 * i]));
-        double wantDb = engine.responseDb(4000) + engine.headroomDb();
+        double wantDb = chain.responseDb(4000) + chain.headroomDb();
         expect(std::abs(20 * std::log10(peak / 0.5) - wantDb) < 0.05, "measured level matches predicted curve");
     }
 
@@ -125,15 +125,15 @@ int main() {
 
     // Cost: 10 bands + limiter on one second of stereo audio must be far below real time.
     {
-        Engine engine;
-        engine.prepare(48000);
-        EngineParams params;
+        OutputChain chain;
+        chain.prepare(48000);
+        OutputParams params;
         params.bandCount = 10;
         for (int i = 0; i < 10; ++i) params.bands[i] = {BandType::Peak, 31.0f * static_cast<float>(1 << i), 3, 1.41f};
-        engine.setParams(params);
+        chain.setParams(params);
         std::vector<float> buffer(480 * 2, 0.1f);
         auto start = std::chrono::steady_clock::now();
-        for (int block = 0; block < 100; ++block) engine.process(buffer.data(), 480, 2);
+        for (int block = 0; block < 100; ++block) chain.process(buffer.data(), 480, 2);
         double seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count();
         std::printf("cpu: %.2f%% of one core\n", seconds * 100);
         expect(seconds < 0.05, "engine uses under 5% of a core");
@@ -156,38 +156,38 @@ int main() {
         }
         return buffer;
     };
-    auto runEngine = [](const EngineParams& params, std::vector<float> buffer) {
-        Engine engine;
-        engine.prepare(48000);
-        engine.setParams(params);
-        engine.process(buffer.data(), buffer.size() / 2, 2);
+    auto runChain = [](const OutputParams& params, std::vector<float> buffer) {
+        OutputChain chain;
+        chain.prepare(48000);
+        chain.setParams(params);
+        chain.process(buffer.data(), buffer.size() / 2, 2);
         return buffer;
     };
 
     // Extras off: the chain is transparent apart from the limiter's delay.
     {
-        EngineParams params;
-        auto out = runEngine(params, stereoSine(1000, 0.25, 48000));
+        OutputParams params;
+        auto out = runChain(params, stereoSine(1000, 0.25, 48000));
         expect(std::abs(rmsDb(out, 2, 24000) - rmsDb(stereoSine(1000, 0.25, 48000), 2, 24000)) < 0.01, "flat chain is transparent");
     }
 
     // Night mode: quiet material comes up, loud material comes down (less dynamic range).
     {
-        EngineParams params;
+        OutputParams params;
         params.night = 1;
-        double quiet = rmsDb(runEngine(params, stereoSine(1000, 0.003, 48000)), 2, 24000) - rmsDb(stereoSine(1000, 0.003, 48000), 2, 24000);
-        double loud = rmsDb(runEngine(params, stereoSine(1000, 0.9, 48000)), 2, 24000) - rmsDb(stereoSine(1000, 0.9, 48000), 2, 24000);
+        double quiet = rmsDb(runChain(params, stereoSine(1000, 0.003, 48000)), 2, 24000) - rmsDb(stereoSine(1000, 0.003, 48000), 2, 24000);
+        double loud = rmsDb(runChain(params, stereoSine(1000, 0.9, 48000)), 2, 24000) - rmsDb(stereoSine(1000, 0.9, 48000), 2, 24000);
         std::printf("night: quiet %+.1f dB, loud %+.1f dB\n", quiet, loud);
         expect(quiet > 6 && loud < -6, "night mode narrows the dynamic range");
     }
 
     // Footsteps: quiet detail at 2.8 kHz is lifted, the same band when loud is not, bass is never touched.
     {
-        EngineParams params;
+        OutputParams params;
         params.footsteps = 1;
         params.limiterEnabled = 0;
         auto gainAt = [&](double frequency, double amplitude) {
-            return rmsDb(runEngine(params, stereoSine(frequency, amplitude, 48000)), 2, 24000) - rmsDb(stereoSine(frequency, amplitude, 48000), 2, 24000);
+            return rmsDb(runChain(params, stereoSine(frequency, amplitude, 48000)), 2, 24000) - rmsDb(stereoSine(frequency, amplitude, 48000), 2, 24000);
         };
         double quiet = gainAt(2800, 0.001), loud = gainAt(2800, 0.5), bass = gainAt(100, 0.001);
         std::printf("footsteps: quiet %+.1f dB, loud %+.1f dB, bass %+.1f dB\n", quiet, loud, bass);
@@ -197,46 +197,46 @@ int main() {
     // Bass protection: only bass boosted past full scale is eased back. Bass at mastered level
     // (just under full scale) must pass untouched, or every track sounds thin.
     {
-        EngineParams params;
+        OutputParams params;
         params.bassProtect = 1;
         params.limiterEnabled = 0;
         auto gainAt = [&](double frequency, double amplitude) {
-            return rmsDb(runEngine(params, stereoSine(frequency, amplitude, 48000)), 2, 24000) - rmsDb(stereoSine(frequency, amplitude, 48000), 2, 24000);
+            return rmsDb(runChain(params, stereoSine(frequency, amplitude, 48000)), 2, 24000) - rmsDb(stereoSine(frequency, amplitude, 48000), 2, 24000);
         };
         double boosted = gainAt(50, 2.5), mastered = gainAt(50, 0.95), mids = gainAt(2000, 0.9);
         std::printf("bass protect: boosted %+.1f dB, mastered %+.1f dB, mids %+.1f dB\n", boosted, mastered, mids);
         expect(boosted < -3 && std::abs(mastered) < 0.3 && std::abs(mids) < 0.3, "bass protection acts only above full scale");
 
         // The default chain (flat curve, protection and limiter on) must be transparent on full-level music.
-        EngineParams defaults;
+        OutputParams defaults;
         defaults.bassProtect = 1;
-        double bass = rmsDb(runEngine(defaults, stereoSine(60, 0.95, 48000)), 2, 24000) - rmsDb(stereoSine(60, 0.95, 48000), 2, 24000);
-        double voice = rmsDb(runEngine(defaults, stereoSine(1000, 0.95, 48000)), 2, 24000) - rmsDb(stereoSine(1000, 0.95, 48000), 2, 24000);
+        double bass = rmsDb(runChain(defaults, stereoSine(60, 0.95, 48000)), 2, 24000) - rmsDb(stereoSine(60, 0.95, 48000), 2, 24000);
+        double voice = rmsDb(runChain(defaults, stereoSine(1000, 0.95, 48000)), 2, 24000) - rmsDb(stereoSine(1000, 0.95, 48000), 2, 24000);
         std::printf("default chain: 60 Hz %+.2f dB, 1 kHz %+.2f dB\n", bass, voice);
         expect(std::abs(bass) < 0.3 && std::abs(voice) < 0.3, "the default chain does not change full-level music");
     }
 
     // Crossfeed: a hard-left signal leaks to the right; a mono signal keeps its level within 1 dB.
     {
-        EngineParams params;
+        OutputParams params;
         params.crossfeed = 1;
         params.limiterEnabled = 0;
         auto left = stereoSine(300, 0.25, 48000);
         for (std::size_t i = 1; i < left.size(); i += 2) left[i] = 0;
-        auto out = runEngine(params, left);
+        auto out = runChain(params, left);
         std::vector<float> rightOnly(out.size());
         for (std::size_t i = 0; i < out.size() / 2; ++i) rightOnly[2 * i] = out[2 * i + 1];
         expect(rmsDb(rightOnly, 2, 24000) > rmsDb(out, 2, 24000) - 14, "crossfeed leaks into the other channel");
-        double mono = rmsDb(runEngine(params, stereoSine(300, 0.25, 48000)), 2, 24000) - rmsDb(stereoSine(300, 0.25, 48000), 2, 24000);
+        double mono = rmsDb(runChain(params, stereoSine(300, 0.25, 48000)), 2, 24000) - rmsDb(stereoSine(300, 0.25, 48000), 2, 24000);
         expect(std::abs(mono) < 1.0, "crossfeed keeps mono level");
     }
 
     // Bass harmonics: a 60 Hz tone gains energy at 120 Hz that was not in the input.
     {
-        EngineParams params;
+        OutputParams params;
         params.bassEnhance = 1;
         params.limiterEnabled = 0;
-        auto out = runEngine(params, stereoSine(60, 0.5, 48000));
+        auto out = runChain(params, stereoSine(60, 0.5, 48000));
         double re = 0, im = 0;
         for (std::size_t i = 24000; i < 48000; ++i) {
             re += out[2 * i] * std::cos(2 * std::numbers::pi * 120 * i / 48000.0);
@@ -249,20 +249,20 @@ int main() {
 
     // Analyzer: a full-scale-ish 1 kHz sine shows up in the right band at the right level.
     {
-        Engine engine;
-        engine.prepare(48000);
-        EngineParams params;
+        OutputChain chain;
+        chain.prepare(48000);
+        OutputParams params;
         params.limiterEnabled = 0;
-        engine.setParams(params);
+        chain.setParams(params);
         auto buffer = stereoSine(1000, 0.5, 4096);
-        engine.process(buffer.data(), 4096, 2);
+        chain.process(buffer.data(), 4096, 2);
         std::size_t strongest = 0;
-        for (std::size_t band = 1; band < Engine::kSpectrumBands; ++band) {
-            if (engine.spectrum()[band] > engine.spectrum()[strongest]) strongest = band;
+        for (std::size_t band = 1; band < OutputChain::kSpectrumBands; ++band) {
+            if (chain.spectrum()[band] > chain.spectrum()[strongest]) strongest = band;
         }
-        double centre = 20.0 * std::pow(1000.0, (strongest + 0.5) / Engine::kSpectrumBands);
+        double centre = 20.0 * std::pow(1000.0, (strongest + 0.5) / OutputChain::kSpectrumBands);
         expect(centre > 800 && centre < 1250, "analyzer finds the tone's band");
-        expect(std::abs(engine.spectrum()[strongest] - 20 * std::log10(0.5)) < 1.5, "analyzer reads the tone's level");
+        expect(std::abs(chain.spectrum()[strongest] - 20 * std::log10(0.5)) < 1.5, "analyzer reads the tone's level");
     }
 
     // Voice chain, at the wireless microphone's 16 kHz and the wired one's 48 kHz.

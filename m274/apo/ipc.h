@@ -3,7 +3,7 @@
 // files in C:\ProgramData\UFO, so settings are live and also survive restarts.
 #include <cstdint>
 
-#include "engine.h"
+#include "output.h"
 #include "voice.h"
 
 namespace m274::ipc {
@@ -19,7 +19,7 @@ constexpr wchar_t kCaptureMetersPath[] = L"C:\\ProgramData\\UFO\\mic-meters.bin"
 struct ParamsFile {
     std::uint32_t magic;
     std::uint32_t sequence;
-    EngineParams params;
+    OutputParams params;
 };
 
 struct VoiceParamsFile {
@@ -39,7 +39,7 @@ struct MetersFile {
     std::uint32_t channels;
     std::uint32_t latencyFrames;
     std::uint32_t paramsSequence;  // last settings the engine applied
-    float spectrum[Engine::kSpectrumBands];  // output spectrum in dBFS (render only)
+    float spectrum[OutputChain::kSpectrumBands];  // output spectrum in dBFS (render only)
 };
 
 static_assert(sizeof(ParamsFile) == 8 + 48 + 32 * 16, "ParamsFile layout is mirrored in M274Client.cs");

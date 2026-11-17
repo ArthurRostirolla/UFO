@@ -23,7 +23,7 @@ struct Band {
 
 /// Everything the app controls on the output. Plain data: this exact layout travels through the
 /// mapped settings file (mirrored in src/Ufo.Audio/M274Client.cs).
-struct EngineParams {
+struct OutputParams {
     static constexpr std::size_t kMaxBands = 32;
 
     std::uint32_t enabled = 1;      // 0 = bit-exact pass-through
@@ -42,14 +42,14 @@ struct EngineParams {
 /// Stereo output chain:
 /// EQ -> bass harmonics -> detail lift -> headroom/trim -> bass protection -> night -> crossfeed -> limiter.
 /// process() never allocates or locks; setParams() may be called from the audio thread between blocks.
-class Engine {
+class OutputChain {
 public:
     static constexpr std::size_t kSpectrumBands = 32;
 
     void prepare(double sampleRate);
 
     /// Applies new settings. Filter coefficients glide to the new values over ~10 ms (no clicks).
-    void setParams(const EngineParams& params);
+    void setParams(const OutputParams& params);
 
     /// Processes interleaved float frames in place. Channels beyond the first two pass untouched.
     void process(float* samples, std::size_t frames, std::size_t channels);
@@ -75,9 +75,9 @@ private:
 
     double sampleRate_ = 48000, headroomDb_ = 0, gain_ = 1, gainTarget_ = 1;
     std::size_t glideLeft_ = 0;
-    EngineParams params_{};
-    std::array<BiquadCoeffs, EngineParams::kMaxBands> coeffs_{}, target_{}, step_{};
-    std::array<std::array<BiquadState, EngineParams::kMaxBands>, 2> state_{};
+    OutputParams params_{};
+    std::array<BiquadCoeffs, OutputParams::kMaxBands> coeffs_{}, target_{}, step_{};
+    std::array<std::array<BiquadState, OutputParams::kMaxBands>, 2> state_{};
     Limiter limiter_;
 
     // Extras
