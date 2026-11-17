@@ -7,7 +7,7 @@ using Ufo.Audio;
 namespace Ufo;
 
 /// <summary>
-/// "Verificar" in settings: an on-demand check of headset, output, engine and microphone, one line
+/// "Verificar" in settings: an on-demand check of headset, output, M274 and microphone, one line
 /// per finding with what to do about it. Nothing here runs by itself: it plays a short tone and
 /// records the microphone, so it only starts when the user asks.
 /// </summary>
@@ -78,12 +78,12 @@ public partial class MainWindow
                 : "Não instalado: equalizador e ajustes de Som não têm efeito. Use Instalar M274, logo acima.");
             return;
         }
-        // A quiet tone through the normal Windows path: if the engine's block counter moves, it is in the chain.
+        // A quiet tone through the normal Windows path: if the M274's block counter moves, it is in the chain.
         VerifyStepText.Text = "Tocando um tom curto no fone…";
-        uint blocksBefore = engine.ReadMeters()?.Blocks ?? 0;
+        uint blocksBefore = m274.ReadMeters()?.Blocks ?? 0;
         headsetAudio.PlayTone(1000, -30);
         await Task.Delay(1200);
-        M274Meters? meters = engine.ReadMeters();
+        M274Meters? meters = m274.ReadMeters();
         headsetAudio.StopTone();
         if (meters is null || meters.Blocks == blocksBefore)
         {

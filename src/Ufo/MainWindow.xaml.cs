@@ -32,7 +32,7 @@ public partial class MainWindow : Window
         InitializeComponent();
         InitializeEqualizer();
         InitializeBeam();
-        InitializeEngine();
+        InitializeM274();
         InitializeSettings();
         StartFloating();
         WindowsStartup.Sync();

@@ -136,7 +136,7 @@ int main() {
         for (int block = 0; block < 100; ++block) chain.process(buffer.data(), 480, 2);
         double seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count();
         std::printf("cpu: %.2f%% of one core\n", seconds * 100);
-        expect(seconds < 0.05, "engine uses under 5% of a core");
+        expect(seconds < 0.05, "M274 uses under 5% of a core");
     }
 
     // Helpers for the feature checks: steady-state RMS of what a chain does to a signal.

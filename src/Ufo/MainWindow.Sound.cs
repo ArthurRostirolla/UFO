@@ -21,7 +21,7 @@ public partial class MainWindow
         void Change(SoundSettings changed)
         {
             sound = changed;
-            ScheduleEngineSend();
+            ScheduleM274Send();
         }
         AddSliderRow(QuickSoundRows, soundRefreshers, "Graves", -6, 9, false, () => sound.BassDb, value => Change(sound with { BassDb = value }),
             "Sobe ou desce os graves como um todo, sem mexer na curva.");
@@ -142,7 +142,7 @@ public partial class MainWindow
 
     // ── Ear calibration ─────────────────────────────────────────────────────────────────────────
     // A 1 kHz reference alternates with a test tone; the listener sets the test tone's level until
-    // both sound equally loud. The engine plays flat meanwhile, so the headphone itself is measured.
+    // both sound equally loud. The M274 plays flat meanwhile, so the headphone itself is measured.
 
     private void ShowCalibration()
     {
@@ -173,7 +173,7 @@ public partial class MainWindow
         {
             isCalibrating = true;
             calibrationLevels.Clear();
-            SendToEngine(); // flat while measuring
+            SendToM274(); // flat while measuring
             StartCalibrationStep();
             return;
         }
@@ -248,6 +248,6 @@ public partial class MainWindow
         isCalibrating = false;
         calibrationLevels.Clear();
         ShowCalibration();
-        SendToEngine();
+        SendToM274();
     }
 }

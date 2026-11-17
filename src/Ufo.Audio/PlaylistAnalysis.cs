@@ -4,7 +4,7 @@ namespace Ufo.Audio;
 public sealed record PlaylistProposal(IReadOnlyList<EqBand> Bands, double TrimDb, double Night, string Summary);
 
 /// <summary>
-/// Listens to what is playing (the engine's spectrum and peak meters, read while the engine plays
+/// Listens to what is playing (the M274's spectrum and peak meters, read while the M274 plays
 /// flat) and proposes a few small moves that serve the music's own character instead of flattening
 /// it: bass-heavy material keeps its bass and gains clarity around it, thin material gains a little
 /// warmth, dull or harsh treble is nudged. Every move is 2.5 dB or less.
@@ -15,7 +15,7 @@ public sealed class PlaylistAnalysis
     public const double MinimumSeconds = 30;
     private const double SilenceDb = -70;
 
-    // ponytail: thresholds for the engine's "strongest bin per band" reading, where a bass note
+    // ponytail: thresholds for the M274's "strongest bin per band" reading, where a bass note
     // (one bin) reads far above mids spread over many bins. Set from one bass-heavy measurement
     // (+25 dB bass over mids, -24 dB treble under mids) and the reference tilt below; tune with more
     // playlists if the classification turns out wrong.
@@ -115,7 +115,7 @@ public sealed class PlaylistAnalysis
     }
 
     /// <summary>
-    /// Typical tilt of mastered music in dB relative to 1 kHz, for the engine's "strongest bin per
+    /// Typical tilt of mastered music in dB relative to 1 kHz, for the M274's "strongest bin per
     /// band" reading: what the thresholds above treat as neither bass-heavy nor thin, dull nor bright.
     /// </summary>
     public static double ReferenceDb(double frequency)

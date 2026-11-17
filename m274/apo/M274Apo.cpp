@@ -1,5 +1,5 @@
 // M274: the audio processing object Windows loads into audiodg.exe for the headset endpoints.
-// One class, two CLSIDs: the render one reads engine.bin, the capture one reads mic.bin.
+// One class, two CLSIDs: the render one reads m274.bin, the capture one reads mic.bin.
 //
 // Safety rules for everything on the audio thread (APOProcess): no allocation, no locks, no I/O
 // calls. Anything unexpected (odd format, missing settings file) turns the object into a plain
@@ -77,7 +77,7 @@ APO_REG_PROPERTIES makeRegProperties(const CLSID& clsid, const wchar_t* name) {
 const APO_REG_PROPERTIES kRenderProps = makeRegProperties(kRenderClsid, L"M274");
 const APO_REG_PROPERTIES kCaptureProps = makeRegProperties(kCaptureClsid, L"M274 (microfone)");
 
-/// A file mapped into memory; stays null (and the engine passes audio through) if it can't open.
+/// A file mapped into memory; stays null (and the M274 passes audio through) if it can't open.
 struct MappedFile {
     HANDLE file = INVALID_HANDLE_VALUE, mapping = nullptr;
     void* view = nullptr;
@@ -277,7 +277,7 @@ public:
         }
         output->u32ValidFrameCount = frames;
         output->u32BufferFlags = isSilent ? BUFFER_SILENT : BUFFER_VALID;
-        if (!hasTracedFirstBlock_) {  // once per stream: proof that audio reached the engine
+        if (!hasTracedFirstBlock_) {  // once per stream: proof that audio reached the M274
             hasTracedFirstBlock_ = true;
             trace("%s first block: %u frames, flags %d, in-place %d, processing %d", isCapture_ ? "mic" : "out", frames,
                   static_cast<int>(input->u32BufferFlags), destination == samples, canProcess_);

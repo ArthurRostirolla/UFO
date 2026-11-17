@@ -6,11 +6,11 @@ using Microsoft.Win32;
 //
 // Installs or removes the M274 for the AW Pro headset outputs. Runs elevated (UAC), started by
 // the app when the user clicks the button. Everything it changes is recorded first in
-// C:\ProgramData\UFO\engine-backup.json, and "remove" puts each value back exactly as it was.
+// C:\ProgramData\UFO\m274-backup.json, and "remove" puts each value back exactly as it was.
 //
 // What "install" changes:
 //   1. copies M274.dll to C:\Program Files\UFO\M274 and registers it (regsvr32);
-//   2. on each AWPRO output and microphone, points the mode-effect slot (MFX) at the engine;
+//   2. on each AWPRO output and microphone, points the mode-effect slot (MFX) at the M274;
 //   3. sets DisableProtectedAudioDG=1 so Windows loads an unsigned effect (same switch Equalizer APO uses);
 //   4. lets the audio service read/write C:\ProgramData\UFO;
 //   5. restarts the Windows audio service (sound drops for a second).
@@ -32,10 +32,21 @@ string installDirectory = Path.Combine(Environment.GetFolderPath(Environment.Spe
 string installedDll = Path.Combine(installDirectory, "M274.dll");
 // Before the M274 rename the DLL lived here; same CLSIDs, so installing M274.dll replaces its registration.
 string legacyDll = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "UFO", "Engine", "UfoApo.dll");
-string backupPath = Path.Combine(DataDirectory, "engine-backup.json");
+string backupPath = Path.Combine(DataDirectory, "m274-backup.json");
 string logPath = Path.Combine(DataDirectory, "m274ctl.log");
 
 Directory.CreateDirectory(DataDirectory);
+// Before the M274 rename these were engine-*.*: carry the backup over (it holds the original
+// Windows values "remove" needs) and drop the old settings files, which nothing reads any more.
+string legacyBackupPath = Path.Combine(DataDirectory, "engine-backup.json");
+if (File.Exists(legacyBackupPath) && !File.Exists(backupPath))
+{
+    File.Move(legacyBackupPath, backupPath);
+}
+foreach (string legacy in new[] { "engine-backup.json", "engine.bin", "engine-meters.bin", "enginectl.log" })
+{
+    try { File.Delete(Path.Combine(DataDirectory, legacy)); } catch (IOException) { } // still mapped: harmless leftover
+}
 try
 {
     switch (args.FirstOrDefault())

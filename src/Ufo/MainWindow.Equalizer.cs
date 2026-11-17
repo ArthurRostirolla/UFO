@@ -31,7 +31,7 @@ public partial class MainWindow
     private readonly DispatcherTimer profileWatch = new() { Interval = TimeSpan.FromSeconds(1.5) };
     private readonly List<Slider> bandSliders = [];
     private readonly List<TextBlock> bandGainTexts = [];
-    private readonly M274Client engine = new();
+    private readonly M274Client m274 = new();
     private readonly HeadsetAudio headsetAudio = new();
 
     private List<SoundProfile> profiles = [];
@@ -136,19 +136,19 @@ public partial class MainWindow
         eqDebounce.Tick += (_, _) =>
         {
             eqDebounce.Stop();
-            SendToEngine();
+            SendToM274();
         };
         profileWatch.Tick += (_, _) => FollowActivity();
         profileWatch.Start();
-        headsetAudio.VolumeChanged += () => Dispatcher.BeginInvoke(ScheduleEngineSend); // loudness follows the volume
+        headsetAudio.VolumeChanged += () => Dispatcher.BeginInvoke(ScheduleM274Send); // loudness follows the volume
 
         InitializeSound();
         InitializeVoice();
         InitializeAnalysis();
         ShowAdvancedState();
         ShowEqualizer();
-        SendToEngine(); // put the saved setup back in the engine, discarding any unsaved one left from last time
-        ShowEngineState();
+        SendToM274(); // put the saved setup back in the M274, discarding any unsaved one left from last time
+        ShowM274State();
     }
 
     // ── Profiles ────────────────────────────────────────────────────────────────────────────────
@@ -194,7 +194,7 @@ public partial class MainWindow
         selectedBand = -1;
         ShowEqualizer();
         ShowSound();
-        ScheduleEngineSend();
+        ScheduleM274Send();
     }
 
     private void StoreActiveProfile() =>
@@ -226,7 +226,7 @@ public partial class MainWindow
         selectedBand = -1;
         ShowEqualizer();
         ShowSound();
-        ScheduleEngineSend();
+        ScheduleM274Send();
     }
 
     /// <summary>The tuned starting point of each built-in profile.</summary>
@@ -397,7 +397,7 @@ public partial class MainWindow
     {
         equalizer = equalizer with { PresetName = Equalizer.CustomPresetName, Bands = bands };
         ShowEqualizer();
-        ScheduleEngineSend();
+        ScheduleM274Send();
     }
 
     private void OnBandSliderChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -418,7 +418,7 @@ public partial class MainWindow
         equalizer = Equalizer.FromPreset(presetName) with { IsEnabled = equalizer.IsEnabled };
         selectedBand = -1;
         ShowEqualizer();
-        ScheduleEngineSend();
+        ScheduleM274Send();
     }
 
     private void OnBandKindChecked(object sender, RoutedEventArgs e)
@@ -436,7 +436,7 @@ public partial class MainWindow
     {
         equalizer = equalizer with { IsEnabled = EqEnabledCheck.IsChecked == true };
         DrawEqualizerCurve();
-        ScheduleEngineSend();
+        ScheduleM274Send();
     }
 
     // Curve interaction: drag a point (frequency, gain), wheel (width), double-click (add), right-click (remove).
@@ -538,7 +538,7 @@ public partial class MainWindow
         e.Handled = true;
     }
 
-    // "Segure para comparar": while held, the engine plays without the curve at the same loudness.
+    // "Segure para comparar": while held, the M274 plays without the curve at the same loudness.
 
     private void OnCompareDown(object sender, MouseButtonEventArgs e) => SetComparing(true);
 
@@ -553,43 +553,43 @@ public partial class MainWindow
             return;
         }
         isComparing = isOn;
-        SendToEngine();
+        SendToM274();
     }
 
-    // ── Engine ──────────────────────────────────────────────────────────────────────────────────
+    // ── M274 ──────────────────────────────────────────────────────────────────────────────────
 
-    private void ScheduleEngineSend()
+    private void ScheduleM274Send()
     {
         eqDebounce.Stop();
         eqDebounce.Start();
         RefreshSaveState();
     }
 
-    /// <summary>Sends the working setup to the engine (heard right away); keeping it is up to "Salvar".</summary>
-    private void SendToEngine()
+    /// <summary>Sends the working setup to the M274 (heard right away); keeping it is up to "Salvar".</summary>
+    private void SendToM274()
     {
         try
         {
             double volumeDb = headsetAudio.VolumeDb;
             if (isCalibrating || isAnalyzing)
             {
-                engine.Send(equalizer with { Bands = [] }, new SoundSettings(IsBassProtected: false));
+                m274.Send(equalizer with { Bands = [] }, new SoundSettings(IsBassProtected: false));
             }
             else if (isComparing)
             {
                 // Same headroom as the full chain, nothing else: a fair, level-matched reference.
                 List<EqBand> all = equalizer.Bands.Concat(sound.ExtraBands(volumeDb)).ToList();
                 double matched = equalizer.IsEnabled ? Equalizer.Preamp(all) : 0;
-                engine.Send(equalizer with { Bands = [] }, new SoundSettings(IsBassProtected: false, TrimDb: sound.TrimDb + matched));
+                m274.Send(equalizer with { Bands = [] }, new SoundSettings(IsBassProtected: false, TrimDb: sound.TrimDb + matched));
             }
             else
             {
-                engine.Send(equalizer, sound, volumeDb);
+                m274.Send(equalizer, sound, volumeDb);
             }
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or COMException)
         {
-            EqEngineText.Text = $"Não foi possível enviar o equalizador ao M274: {ex.Message}";
+            EqM274Text.Text = $"Não foi possível enviar o equalizador ao M274: {ex.Message}";
         }
     }
 

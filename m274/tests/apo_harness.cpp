@@ -139,7 +139,7 @@ int wmain(int argc, wchar_t** argv) {
     expect(std::fabs(at1k - 0.0) < 0.1, "boosted band lands at full level after headroom");
     expect(std::fabs(at100 + 6.0) < 0.15, "rest of the spectrum sits at the headroom level");
 
-    // Meters prove the engine saw the settings and is counting blocks.
+    // Meters prove the M274 saw the settings and is counting blocks.
     HANDLE meters = CreateFileW(m274::ipc::kRenderMetersPath, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, 0, nullptr);
     expect(meters != INVALID_HANDLE_VALUE, "meters file exists");
     m274::ipc::MetersFile seen{};

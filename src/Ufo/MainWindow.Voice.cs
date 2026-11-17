@@ -34,7 +34,7 @@ public partial class MainWindow
         void Change(VoiceSettings changed)
         {
             voice = changed;
-            SendVoiceToEngine();
+            SendVoiceToM274();
             ShowVoiceStyle();
             ShowVoiceInfo();
             RefreshSaveState();
@@ -47,7 +47,7 @@ public partial class MainWindow
                 if (!isShowingRows)
                 {
                     voice = settings;
-                    SendVoiceToEngine();
+                    SendVoiceToM274();
                     ShowVoice();
                     RefreshSaveState();
                 }
@@ -78,7 +78,7 @@ public partial class MainWindow
         voiceInfoTimer.Tick += (_, _) => ShowVoiceInfo();
         voiceInfoTimer.Start();
         ShowVoice();
-        SendVoiceToEngine();
+        SendVoiceToM274();
     }
 
     private void ShowVoice()
@@ -114,16 +114,16 @@ public partial class MainWindow
         {
             voice = VoiceStyles[0].Settings; // switched on with nothing set: start from "Natural" instead of a chain that does nothing
         }
-        SendVoiceToEngine();
+        SendVoiceToM274();
         ShowVoice();
         RefreshSaveState();
     }
 
-    private void SendVoiceToEngine()
+    private void SendVoiceToM274()
     {
         try
         {
-            engine.SendVoice(voice);
+            m274.SendVoice(voice);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -131,7 +131,7 @@ public partial class MainWindow
         }
     }
 
-    /// <summary>What the link allows, whether the engine is on the microphone, and the double-processing warning.</summary>
+    /// <summary>What the link allows, whether the M274 is on the microphone, and the double-processing warning.</summary>
     private void ShowVoiceInfo()
     {
         int? rate;

@@ -54,13 +54,13 @@ if (Equalizer.ResponseDb(singleBoost, 100) > -5.5)
     throw new Exception("far from the boost the curve should sit near the -6 dB preamp");
 }
 
-// Engine settings file: layout must match m274/apo/ipc.h (magic, even sequence, then the bands).
+// M274 settings file: layout must match m274/apo/ipc.h (magic, even sequence, then the bands).
 using (var client = new M274Client())
 {
     client.Send(fps, new SoundSettings());
 }
-// Shared open: the running app and the engine keep this file mapped.
-using var sentFile = new FileStream(Path.Combine(M274Client.DataDirectory, "engine.bin"), FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+// Shared open: the running app and the M274 keep this file mapped.
+using var sentFile = new FileStream(Path.Combine(M274Client.DataDirectory, "m274.bin"), FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
 byte[] sent = new byte[sentFile.Length];
 sentFile.ReadExactly(sent);
 Expect(sent.Length, 568, "settings file size");

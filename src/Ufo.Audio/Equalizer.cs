@@ -2,7 +2,7 @@ using System.Numerics;
 
 namespace Ufo.Audio;
 
-/// <summary>Filter shapes the engine knows (values match BandType in m274/dsp/output.h).</summary>
+/// <summary>Filter shapes the M274 knows (values match BandType in m274/dsp/output.h).</summary>
 public enum BandKind
 {
     Peak = 0,
@@ -49,7 +49,7 @@ public static class Equalizer
 
     /// <summary>
     /// Headroom (≤ 0 dB) that keeps the curve from boosting above full scale: the real peak of the
-    /// combined curve, like the engine computes it (m274/dsp/output.cpp), so stacked bands count.
+    /// combined curve, like the M274 computes it (m274/dsp/output.cpp), so stacked bands count.
     /// </summary>
     public static double Preamp(IReadOnlyList<EqBand> bands)
     {
@@ -65,11 +65,11 @@ public static class Equalizer
         return -peak;
     }
 
-    /// <summary>Total response in dB at a frequency, headroom included: what the engine outputs.</summary>
+    /// <summary>Total response in dB at a frequency, headroom included: what the M274 outputs.</summary>
     public static double ResponseDb(IReadOnlyList<EqBand> bands, double frequency) => Preamp(bands) + CurveDb(bands, frequency);
 
     /// <summary>
-    /// Sum of the bands' analog responses, headroom excluded. The engine's filters follow this
+    /// Sum of the bands' analog responses, headroom excluded. The M274's filters follow this
     /// curve to within about 0.35 dB up to 20 kHz, so the graph shows what is actually heard.
     /// </summary>
     public static double CurveDb(IReadOnlyList<EqBand> bands, double frequency)

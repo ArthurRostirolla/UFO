@@ -3,14 +3,14 @@ using Microsoft.Win32;
 
 namespace Ufo.Audio;
 
-/// <summary>What the engine reports back while audio flows. Spectrum is 32 log bands (20 Hz–20 kHz) in dBFS.</summary>
+/// <summary>What the M274 reports back while audio flows. Spectrum is 32 log bands (20 Hz–20 kHz) in dBFS.</summary>
 public sealed record M274Meters(uint Blocks, float PeakLeft, float PeakRight, float LimiterGain, float HeadroomDb, float SampleRate, uint LatencyFrames, float[] Spectrum);
 
 /// <summary>
 /// Talks to the M274 (m274/apo/M274Apo.cpp) through files both sides memory-map in
 /// C:\ProgramData\UFO; the byte layouts mirror m274/apo/ipc.h. Settings are written as a seqlock
 /// (sequence odd while writing, even when complete), so the audio thread never sees half an update,
-/// and because they are files the engine finds the last settings again after a restart.
+/// and because they are files the M274 finds the last settings again after a restart.
 /// </summary>
 public sealed class M274Client : IDisposable
 {
@@ -29,17 +29,18 @@ public sealed class M274Client : IDisposable
     private const string DevicesKey = @"SOFTWARE\Microsoft\Windows\CurrentVersion\MMDevices\Audio";
     private const string FriendlyNameValue = "{b3f8fa53-0004-438e-9003-51a46e139bfc},6";
 
-    private readonly SettingsFile render = new(Path.Combine(DataDirectory, "engine.bin"), ParamsSize);
+    private readonly SettingsFile render = new(Path.Combine(DataDirectory, "m274.bin"), ParamsSize);
     private readonly SettingsFile capture = new(Path.Combine(DataDirectory, "mic.bin"), VoiceSize);
 
-    /// <summary>True when Windows has the engine attached to the headset's game output.</summary>
+    /// <summary>True when Windows has the M274 attached to the headset's game output.</summary>
     public static bool IsInstalled() => IsAttached("Render", GameEndpointName, RenderClsid);
 
-    /// <summary>True when the engine is attached to at least one AWPRO microphone.</summary>
+    /// <summary>True when the M274 is attached to at least one AWPRO microphone.</summary>
     public static bool IsMicrophoneInstalled() => IsAttached("Capture", "AWPRO", CaptureClsid);
 
-    /// <summary>True when the installer's backup exists, i.e. the user installed the engine at some point.</summary>
-    public static bool WasInstalled() => File.Exists(Path.Combine(DataDirectory, "engine-backup.json"));
+    /// <summary>True when the installer's backup exists, i.e. the user installed the M274 at some point.</summary>
+    public static bool WasInstalled() =>
+        File.Exists(Path.Combine(DataDirectory, "m274-backup.json")) || File.Exists(Path.Combine(DataDirectory, "engine-backup.json")); // engine-*: before the M274 rename
 
     private static bool IsAttached(string flow, string nameFragment, string clsid)
     {
@@ -115,10 +116,10 @@ public sealed class M274Client : IDisposable
         }
     }
 
-    /// <summary>Latest output meters, or null when the engine has never run.</summary>
-    public M274Meters? ReadMeters() => ReadMeters("engine-meters.bin");
+    /// <summary>Latest output meters, or null when the M274 has never run.</summary>
+    public M274Meters? ReadMeters() => ReadMeters("m274-meters.bin");
 
-    /// <summary>Latest microphone meters, or null when the microphone engine has never run.</summary>
+    /// <summary>Latest microphone meters, or null when the M274 has never run on the microphone.</summary>
     public M274Meters? ReadMicrophoneMeters() => ReadMeters("mic-meters.bin");
 
     private static M274Meters? ReadMeters(string fileName)
@@ -160,7 +161,7 @@ public sealed class M274Client : IDisposable
         public void Write(Action<MemoryMappedViewAccessor> writePayload)
         {
             MemoryMappedViewAccessor accessor = Open();
-            sequence = (sequence | 1) + 2;   // odd: the engine ignores the payload while it changes
+            sequence = (sequence | 1) + 2;   // odd: the M274 ignores the payload while it changes
             accessor.Write(4, sequence);
             writePayload(accessor);
             accessor.Write(0, Magic);
@@ -179,7 +180,7 @@ public sealed class M274Client : IDisposable
             var stream = new FileStream(path, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.ReadWrite | FileShare.Delete);
             mapping = MemoryMappedFile.CreateFromFile(stream, null, size, MemoryMappedFileAccess.ReadWrite, HandleInheritability.None, leaveOpen: false);
             view = mapping.CreateViewAccessor(0, size);
-            sequence = view.ReadUInt32(4);    // continue from what the engine may already have applied
+            sequence = view.ReadUInt32(4);    // continue from what the M274 may already have applied
             return view;
         }
 
