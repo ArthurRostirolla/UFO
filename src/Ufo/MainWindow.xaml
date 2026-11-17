@@ -398,7 +398,7 @@
                         </Border>
                         <Border Style="{StaticResource Section}">
                             <StackPanel>
-                                <TextBlock Text="Motor de áudio" Style="{StaticResource SectionHeading}" />
+                                <TextBlock Text="M274 · motor de áudio" Style="{StaticResource SectionHeading}" />
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
@@ -413,7 +413,7 @@
                                                      Foreground="{DynamicResource AccentBrush}" Background="{DynamicResource LineBrush}" BorderThickness="0" />
                                     </StackPanel>
                                     <Button x:Name="RemoveEngineButton" Grid.Column="1" Style="{StaticResource QuietButton}" Height="36" Margin="0,0,8,0" Content="Remover" Click="OnRemoveEngineClick" VerticalAlignment="Center" />
-                                    <Button x:Name="InstallEngineButton" Grid.Column="2" Style="{StaticResource PrimaryButton}" Content="Instalar motor" Click="OnInstallEngineClick" VerticalAlignment="Center" />
+                                    <Button x:Name="InstallEngineButton" Grid.Column="2" Style="{StaticResource PrimaryButton}" Content="Instalar M274" Click="OnInstallEngineClick" VerticalAlignment="Center" />
                                 </Grid>
                             </StackPanel>
                         </Border>
@@ -421,10 +421,10 @@
                             <StackPanel>
                                 <TextBlock Text="Verificação" Style="{StaticResource SectionHeading}" />
                                 <TextBlock Style="{StaticResource Hint}" FontSize="13" TextWrapping="Wrap"
-                                           Text="Confere fone, saída, motor e microfone e diz o que consertar. Só roda quando você pede: toca um tom curto no fone e ouve o microfone por alguns segundos. Nada é gravado em disco." />
+                                           Text="Confere fone, saída, M274 e microfone e diz o que consertar. Só roda quando você pede: toca um tom curto no fone e ouve o microfone por alguns segundos. Nada é gravado em disco." />
                                 <WrapPanel Margin="0,12,0,0">
                                     <CheckBox x:Name="CheckAudioOption" Style="{StaticResource Switch}" Padding="0" Margin="0,0,32,0" MinHeight="44" IsChecked="True"
-                                              AutomationProperties.Name="Verificar áudio" ToolTip="Saída do Windows, formato, volume e se o motor está de fato processando o som.">
+                                              AutomationProperties.Name="Verificar áudio" ToolTip="Saída do Windows, formato, volume e se o M274 está de fato processando o som.">
                                         <TextBlock Text="Áudio" FontSize="14" />
                                     </CheckBox>
                                     <CheckBox x:Name="CheckMicrophoneOption" Style="{StaticResource Switch}" Padding="0" Margin="0,0,32,0" MinHeight="44" IsChecked="True"
@@ -598,10 +598,10 @@
                         <!-- Without the engine the equalizer cannot change the sound: the controls blur and
                              lock, and the install action sits right here instead of hiding in settings. -->
                         <StackPanel x:Name="EqInstallGate" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,120,0,0" MaxWidth="420">
-                            <TextBlock x:Name="EqGateTitle" Text="O equalizador precisa do motor de áudio" FontSize="18" FontWeight="Medium" TextAlignment="Center" TextWrapping="Wrap" />
+                            <TextBlock x:Name="EqGateTitle" Text="O equalizador precisa do M274" FontSize="18" FontWeight="Medium" TextAlignment="Center" TextWrapping="Wrap" />
                             <TextBlock x:Name="EqGateText" Style="{StaticResource Hint}" FontSize="13" TextAlignment="Center" TextWrapping="Wrap" Margin="0,8,0,20"
                                        Text="É ele que aplica a curva ao som do fone. A instalação pede permissão de administrador e reinicia o áudio do Windows por um instante." />
-                            <Button x:Name="EqGateInstallButton" Style="{StaticResource PrimaryButton}" Content="Instalar motor" Click="OnInstallEngineClick" HorizontalAlignment="Center" />
+                            <Button x:Name="EqGateInstallButton" Style="{StaticResource PrimaryButton}" Content="Instalar M274" Click="OnInstallEngineClick" HorizontalAlignment="Center" />
                             <ProgressBar x:Name="EqGateProgress" IsIndeterminate="True" Height="2" Width="220" Margin="0,16,0,0" Visibility="Collapsed"
                                          Foreground="{DynamicResource AccentBrush}" Background="{DynamicResource LineBrush}" BorderThickness="0" />
                         </StackPanel>

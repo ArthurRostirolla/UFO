@@ -113,7 +113,7 @@ void Install()
             {
                 effects.SetValue(ModeListValue, new[] { DefaultMode }, RegistryValueKind.MultiString);
             }
-            Log($"motor ligado em {id}");
+            Log($"M274 ligado em {id}");
         }
     }
     using (RegistryKey audio = Registry.LocalMachine.CreateSubKey(AudioKey))

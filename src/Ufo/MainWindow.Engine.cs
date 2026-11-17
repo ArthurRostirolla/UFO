@@ -52,11 +52,11 @@ public partial class MainWindow
 
         // A Windows or driver update can detach the engine: say so and offer the one-click repair.
         bool isDetached = !isInstalled && EngineClient.WasInstalled();
-        EqGateTitle.Text = isDetached ? "O Windows desligou o motor de áudio" : "O equalizador precisa do motor de áudio";
+        EqGateTitle.Text = isDetached ? "O Windows desligou o M274" : "O equalizador precisa do M274";
         if (engineFailure is null)
         {
             EqGateText.Text = isDetached
-                ? "Uma atualização do Windows ou do driver tirou o motor do fone. Reparar o religa em segundos; seus ajustes continuam salvos."
+                ? "Uma atualização do Windows ou do driver tirou o M274 do fone. Reparar o religa em segundos; seus ajustes continuam salvos."
                 : "É ele que aplica a curva ao som do fone. A instalação pede permissão de administrador e reinicia o áudio do Windows por um instante.";
         }
 
@@ -71,14 +71,14 @@ public partial class MainWindow
         }
 
         EqEngineText.Text = isRunning && meters is not null
-            ? $"Motor ativo · {meters.SampleRate / 1000:0.#} kHz · reserva {meters.HeadroomDb:0.0} dB · limitador {20 * Math.Log10(Math.Max(meters.LimiterGain, 1e-4)):0.0} dB · {meters.LatencyFrames * 1000.0 / Math.Max(meters.SampleRate, 1):0.0} ms"
-            : isInstalled ? "Motor instalado, aguardando áudio no fone." : "";
+            ? $"M274 ativo · {meters.SampleRate / 1000:0.#} kHz · reserva {meters.HeadroomDb:0.0} dB · limitador {20 * Math.Log10(Math.Max(meters.LimiterGain, 1e-4)):0.0} dB · {meters.LatencyFrames * 1000.0 / Math.Max(meters.SampleRate, 1):0.0} ms"
+            : isInstalled ? "M274 instalado, aguardando áudio no fone." : "";
         if (!isEngineBusy)
         {
             EngineStateText.Text = engineFailure ?? (!isInstalled ? "Não instalado" : isRunning ? "Ativo" : "Instalado, sem áudio tocando");
         }
         // Loading state from the click until the helper exits (UAC prompt included).
-        string idleLabel = isInstalled ? "Reinstalar" : isDetached ? "Reparar motor" : "Instalar motor";
+        string idleLabel = isInstalled ? "Reinstalar" : isDetached ? "Reparar M274" : "Instalar M274";
         InstallEngineButton.Content = isEngineBusy ? busyLabel : idleLabel;
         EqGateInstallButton.Content = isEngineBusy ? busyLabel : idleLabel;
         RemoveEngineButton.IsEnabled = isInstalled && !isEngineBusy;
@@ -99,7 +99,7 @@ public partial class MainWindow
         }
         if (!File.Exists(EngineCtlPath))
         {
-            engineFailure = "Instalador do motor não encontrado nesta cópia do app.";
+            engineFailure = "Instalador do M274 não encontrado nesta cópia do app.";
             ShowEngineState();
             return;
         }

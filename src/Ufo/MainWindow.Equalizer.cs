@@ -589,7 +589,7 @@ public partial class MainWindow
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or COMException)
         {
-            EqEngineText.Text = $"Não foi possível enviar o equalizador ao motor: {ex.Message}";
+            EqEngineText.Text = $"Não foi possível enviar o equalizador ao M274: {ex.Message}";
         }
     }
 

@@ -73,9 +73,9 @@ public partial class MainWindow
 
         if (!EngineClient.IsInstalled())
         {
-            AddCheck(CheckLevel.Failure, "Motor de áudio", EngineClient.WasInstalled()
-                ? "O Windows desligou o motor do fone. Use Reparar, logo acima."
-                : "Não instalado: equalizador e ajustes de Som não têm efeito. Use Instalar motor, logo acima.");
+            AddCheck(CheckLevel.Failure, "M274", EngineClient.WasInstalled()
+                ? "O Windows desligou o M274 do fone. Use Reparar, logo acima."
+                : "Não instalado: equalizador e ajustes de Som não têm efeito. Use Instalar M274, logo acima.");
             return;
         }
         // A quiet tone through the normal Windows path: if the engine's block counter moves, it is in the chain.
@@ -87,11 +87,11 @@ public partial class MainWindow
         headsetAudio.StopTone();
         if (meters is null || meters.Blocks == blocksBefore)
         {
-            AddCheck(CheckLevel.Failure, "Motor de áudio", "Instalado, mas o som não passou por ele. Use Reinstalar, logo acima; se continuar, reinicie o PC.");
+            AddCheck(CheckLevel.Failure, "M274", "Instalado, mas o som não passou por ele. Use Reinstalar, logo acima; se continuar, reinicie o PC.");
             return;
         }
         double limiterDb = 20 * Math.Log10(Math.Max(meters.LimiterGain, 1e-4));
-        AddCheck(CheckLevel.Ok, "Motor de áudio",
+        AddCheck(CheckLevel.Ok, "M274",
             $"Processando em {meters.SampleRate / 1000:0.#} kHz, atraso de {meters.LatencyFrames * 1000.0 / Math.Max(meters.SampleRate, 1):0.0} ms, perfil {profiles[activeProfile].Name}.");
         if (limiterDb < -6)
         {
@@ -122,7 +122,7 @@ public partial class MainWindow
         }
         if (!EngineClient.IsMicrophoneInstalled())
         {
-            AddCheck(CheckLevel.Warning, "Motor no microfone", "Não está ligado: o processamento de voz não tem efeito. Use Instalar ou Reinstalar, logo acima.");
+            AddCheck(CheckLevel.Warning, "M274 no microfone", "Não está ligado: o processamento de voz não tem efeito. Use Instalar ou Reinstalar, logo acima.");
         }
         if (voice.IsEnabled && voice.Denoise > 0 && NoiseReductionCheck.IsChecked == true)
         {

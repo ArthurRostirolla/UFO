@@ -127,7 +127,7 @@ public partial class MainWindow
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            MicTestText.Text = $"Não foi possível enviar ao motor: {ex.Message}";
+            MicTestText.Text = $"Não foi possível enviar ao M274: {ex.Message}";
         }
     }
 
@@ -154,7 +154,7 @@ public partial class MainWindow
         };
         if (!EngineClient.IsMicrophoneInstalled())
         {
-            notes.Add("O motor ainda não está ligado ao microfone: instale ou reinstale em Configurações.");
+            notes.Add("O M274 ainda não está ligado ao microfone: instale ou reinstale em Configurações.");
         }
         if (voice.IsEnabled && voice.Denoise > 0 && NoiseReductionCheck.IsChecked == true)
         {
