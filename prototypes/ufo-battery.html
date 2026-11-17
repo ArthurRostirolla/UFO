@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UFO · mostrador de bateria</title>
+<style>
+*{box-sizing:border-box}
+:root{--bg:#0B0B0C;--ink:#EDEDEA;--mu:#77776F;--line:#232322;--ring:#34342F;--ac:#FF5A1F;--low:#FF5A5A}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:"Segoe UI Variable Text","Segoe UI",system-ui,sans-serif}
+.mono{font-family:"Cascadia Mono",Consolas,monospace}
+.page{position:fixed;inset:0;display:grid;grid-template-rows:40px 1fr}
+.titlebar{display:flex;align-items:center;gap:10px;padding:0 16px;font:12px "Cascadia Mono",Consolas,monospace;color:var(--mu)}
+.titlebar svg{width:22px}
+.shell{display:grid;grid-template-columns:4fr 6fr}
+.side{display:grid;place-items:center;border-right:1px solid var(--line);position:relative}
+.panel{padding:56px 64px;opacity:.35;pointer-events:none}
+.panel h1{display:flex;align-items:center;gap:12px;font-size:44px;font-weight:500;margin:0 0 36px}
+.panel h1::before{content:"";width:10px;height:10px;border-radius:50%;background:var(--ac)}
+.panel .row{border-top:1px solid var(--line);padding:22px 0;color:var(--mu);font-size:14px}
+.orbit{position:relative;width:310px;height:310px}
+.ring{position:absolute;inset:0;border:1px dashed var(--ring);border-radius:50%}
+.moon{position:absolute;width:62px;height:62px;margin:-31px 0 0 -31px;border-radius:50%;background:var(--bg);border:1px solid var(--line);display:grid;place-items:center;color:var(--mu);z-index:2}
+.moon.on{background:var(--ac);border-color:var(--ac);color:var(--bg)}
+.moon span{position:absolute;top:70px;font:11px "Cascadia Mono",Consolas,monospace;color:var(--mu);white-space:nowrap}
+.core{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;z-index:1}
+.status{font:11px "Cascadia Mono",Consolas,monospace;color:var(--mu)}
+.bolt{display:inline-block;width:10px;height:14px;vertical-align:-1px;margin-left:6px;background:var(--ac);clip-path:polygon(60% 0,0 58%,45% 58%,35% 100%,100% 40%,55% 40%)}
+.is-low .bolt{background:var(--low)}
+@keyframes breathe{50%{opacity:.45}}
+@keyframes rise{to{background-position:0 -24px}}
+
+/* 1 · Anel orbital: the orbit ring itself is the gauge */
+.v-ring .gauge{position:absolute;inset:-1px;width:312px;height:312px;transform:rotate(-90deg);z-index:1}
+.v-ring .gauge circle{fill:none;stroke-width:3;stroke-linecap:round}
+.v-ring .gauge .fill{stroke:var(--ac);transition:stroke-dashoffset .4s cubic-bezier(.23,1,.32,1)}
+.v-ring.enter .gauge .fill{animation:drawArc .7s cubic-bezier(.23,1,.32,1) both}
+@keyframes drawArc{from{stroke-dashoffset:var(--full)}}
+.v-ring .tip{fill:var(--ac)}
+.v-ring.is-charging .tip{animation:breathe 1.2s ease-in-out infinite}
+.v-ring.is-low .fill{stroke:var(--low)}
+.v-ring.is-low .tip{fill:var(--low)}
+.v-ring.is-low .fill{animation:breathe 1.6s ease-in-out infinite}
+.v-ring .core svg{width:110px}
+.v-ring .pct{font:500 34px "Cascadia Mono",Consolas,monospace;letter-spacing:-.02em}
+.v-ring.is-low .pct{color:var(--low)}
+
+/* 2 · Janelas do disco: the five windows are the battery bars */
+.v-windows .core svg{width:170px}
+.v-windows .win{fill:#3A3A36;transition:fill .2s ease-out}
+.v-windows .win.lit{fill:var(--ac)}
+.v-windows.enter .win.lit{animation:light .25s ease-out both}
+.v-windows.enter .win.lit:nth-of-type(2){animation-delay:.06s}
+.v-windows.enter .win.lit:nth-of-type(3){animation-delay:.12s}
+.v-windows.enter .win.lit:nth-of-type(4){animation-delay:.18s}
+.v-windows.enter .win.lit:nth-of-type(5){animation-delay:.24s}
+@keyframes light{from{fill:#3A3A36}}
+.v-windows .win.next{animation:breathe 1s ease-in-out infinite;fill:var(--ac)}
+.v-windows.is-low .win.lit{fill:var(--low);animation:breathe 1.4s ease-in-out infinite}
+.v-windows .readout{display:flex;align-items:baseline;gap:8px;margin-top:4px}
+.v-windows .pct{font:500 26px "Cascadia Mono",Consolas,monospace}
+.v-windows .bars{font:11px "Cascadia Mono",Consolas,monospace;color:var(--mu)}
+.v-windows.is-low .pct{color:var(--low)}
+
+/* 3 · Raio trator: flat, in the saucer's own language (solid fills, gaps in the page colour).
+   The beam shares the saucer's 200-unit artboard and width, so it leaves the hatch exactly. Its only
+   motion is the gaps drifting through the charge: down at rest, up and faster while charging. */
+.v-beam .core{gap:0}
+.v-beam .core svg.saucer{width:118px;position:relative;z-index:2}
+.v-beam .tractor{width:118px;display:block;margin-top:-7.7px;position:relative;z-index:1}
+.v-beam .empty{fill:#1E1E1C}
+.v-beam .charge{fill:var(--ac)}
+.v-beam.is-low .charge{fill:var(--low)}
+.v-beam .level{transform-box:fill-box;transform-origin:bottom}
+.v-beam.enter .level{animation:fillUp .6s cubic-bezier(.23,1,.32,1) both}
+@keyframes fillUp{from{transform:scaleY(0)}}
+.v-beam .gaps rect{fill:var(--bg)}
+.v-beam .gaps{animation:gapsDown 2.4s linear infinite}
+.v-beam.is-charging .gaps{animation:gapsUp 1.2s linear infinite}
+.v-beam.is-low .gaps{animation-duration:4s}
+@keyframes gapsDown{from{transform:translateY(0)}to{transform:translateY(16px)}}
+@keyframes gapsUp{from{transform:translateY(0)}to{transform:translateY(-16px)}}
+.v-beam .readout{display:flex;align-items:baseline;gap:6px;margin-top:10px}
+.v-beam .pct{font:500 28px "Cascadia Mono",Consolas,monospace;letter-spacing:-.02em}
+.v-beam.is-low .pct{color:var(--low)}
+
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+
+/* simulation controls (harness context, not part of the design) */
+.sim{position:fixed;top:52px;right:20px;display:flex;align-items:center;gap:14px;padding:8px 14px;border:1px solid var(--line);border-radius:10px;font:12px "Cascadia Mono",Consolas,monospace;color:var(--mu);z-index:10;background:var(--bg)}
+.sim input[type=range]{accent-color:var(--ac);width:140px}
+.sim label{display:flex;align-items:center;gap:6px;cursor:pointer}
+
+/* picker (verbatim spec) */
+.proto-picker{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:2147483647;display:flex;align-items:center;gap:2px;padding:4px;border-radius:999px;background:rgba(10,10,10,.82);-webkit-backdrop-filter:blur(12px) saturate(1.4);backdrop-filter:blur(12px) saturate(1.4);box-shadow:0 0 0 1px rgba(255,255,255,.08) inset,0 8px 24px rgba(0,0,0,.24),0 2px 6px rgba(0,0,0,.12);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:13px;line-height:1;-webkit-font-smoothing:antialiased;user-select:none;-webkit-user-select:none}
+.proto-picker-highlight{position:absolute;top:4px;left:0;height:28px;border-radius:999px;background:rgba(255,255,255,.12);will-change:transform}
+.proto-picker[data-ready] .proto-picker-highlight{transition:transform 250ms cubic-bezier(.23,1,.32,1),width 250ms cubic-bezier(.23,1,.32,1)}
+@media (prefers-reduced-motion:reduce){.proto-picker[data-ready] .proto-picker-highlight{transition:none}}
+.proto-picker-item{position:relative;display:flex;align-items:center;height:28px;padding:0 12px;border:0;border-radius:999px;background:transparent;color:rgba(255,255,255,.55);font:inherit;cursor:pointer;transition:color 150ms ease-out}
+.proto-picker-item:hover{color:rgba(255,255,255,.85)}
+.proto-picker-item:active{transform:scale(.97)}
+.proto-picker-item:focus-visible{outline:2px solid rgba(255,255,255,.4);outline-offset:2px}
+.proto-picker-item[data-active]{color:#fff}
+.proto-picker-divider{width:1px;height:16px;margin:0 4px;background:rgba(255,255,255,.12)}
+.proto-picker-replay{padding:0 10px;font-size:14px}
+.proto-picker[data-position="top"]{bottom:auto;top:24px}
+</style>
+</head>
+<body>
+<div id="stage"></div>
+
+<div class="sim" aria-label="Simulação">
+  <span>simular</span>
+  <input id="level" type="range" min="0" max="100" step="1" value="31" aria-label="Nível da bateria">
+  <span id="levelOut">31%</span>
+  <label><input id="charging" type="checkbox"> carregando</label>
+</div>
+
+<nav class="proto-picker" aria-label="Prototype variants">
+  <span class="proto-picker-highlight" aria-hidden="true"></span>
+  <button class="proto-picker-item" data-active aria-current="true">Anel orbital</button>
+  <button class="proto-picker-item">Janelas do disco</button>
+  <button class="proto-picker-item">Raio trator</button>
+  <span class="proto-picker-divider" aria-hidden="true"></span>
+  <button class="proto-picker-item proto-picker-replay" aria-label="Replay animation (R)">↻</button>
+</nav>
+
+<script>
+const LOW = 20;
+const state = { level: 31, charging: false };
+
+// Saucer in the chosen "Casco branco" palette; `windows` lets a variant own the window fills.
+let clipCount = 0;
+function saucer(windows = '', className = '') {
+  const clip = `lens-${++clipCount}`;
+  const lens = 'M14 70C52 38 148 38 186 70C150 106 50 106 14 70Z';
+  const defaultWindows = `<g fill="#FF5A1F"><rect x="42" y="74" width="13" height="5.5" rx="2.75" transform="rotate(12 48 77)"/><rect x="71" y="75" width="10" height="5.5" rx="2.75" transform="rotate(50 76 78)"/><circle cx="100" cy="78" r="4"/><rect x="119" y="75" width="10" height="5.5" rx="2.75" transform="rotate(-50 124 78)"/><rect x="145" y="74" width="13" height="5.5" rx="2.75" transform="rotate(-12 152 77)"/></g>`;
+  return `<svg class="${className}" viewBox="0 18 200 92" aria-hidden="true">
+    <clipPath id="${clip}"><path d="${lens}"/></clipPath>
+    <path d="M70 50a30 30 0 0 1 60 0" fill="#FF5A1F" stroke="#0B0B0C" stroke-width="7"/>
+    <path d="${lens}" fill="#EDEDEA"/>
+    <path d="${lens}" fill="none" stroke="#0B0B0C" stroke-width="7" stroke-linejoin="round"/>
+    ${windows || defaultWindows}
+    <ellipse cx="100" cy="97" rx="28" ry="6.5" fill="#FF5A1F" stroke="#0B0B0C" stroke-width="7"/>
+  </svg>`;
+}
+const statusText = () => state.charging ? 'aw pro · carregando' : state.level <= LOW ? 'aw pro · bateria baixa' : 'aw pro · conectado';
+const bolt = () => state.charging ? '<i class="bolt" aria-label="carregando"></i>' : '';
+
+const ICON = {
+  fone: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="14" width="4.5" height="7" rx="1.6"/><rect x="16.5" y="14" width="4.5" height="7" rx="1.6"/></svg>',
+  mic: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg>',
+  eq: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 8h16M4 16h16"/><circle cx="15" cy="8" r="2" fill="#0B0B0C"/><circle cx="9" cy="16" r="2" fill="#0B0B0C"/></svg>',
+};
+function orbit(core, extra = '') {
+  const moon = (angle, key, label, on) => {
+    const x = 155 + 155 * Math.cos(angle * Math.PI / 180), y = 155 + 155 * Math.sin(angle * Math.PI / 180);
+    return `<div class="moon${on ? ' on' : ''}" style="left:${x}px;top:${y}px">${ICON[key]}<span>${label}</span></div>`;
+  };
+  return `<div class="orbit"><div class="ring"></div>${extra}
+    ${moon(0, 'fone', 'fone', true)}${moon(120, 'mic', 'microfone')}${moon(240, 'eq', 'equalizador')}
+    <div class="core">${core}</div></div>`;
+}
+
+const variants = [
+  { // Continuous: an accent arc runs along the orbit ring from the top, clockwise.
+    className: 'v-ring',
+    render() {
+      const radius = 155, full = 2 * Math.PI * radius, shown = full * state.level / 100;
+      const angle = (state.level / 100) * 2 * Math.PI;
+      const tipX = 156 + radius * Math.cos(angle), tipY = 156 + radius * Math.sin(angle);
+      const gauge = `<svg class="gauge" viewBox="0 0 312 312" style="--full:${full}">
+        <circle class="fill" cx="156" cy="156" r="${radius}" stroke-dasharray="${shown} ${full}" stroke-dashoffset="0"/>
+        ${state.level > 0 ? `<circle class="tip" cx="${tipX}" cy="${tipY}" r="5"/>` : ''}
+      </svg>`;
+      return orbit(`${saucer()}<span class="pct">${state.level}%${bolt()}</span><span class="status">${statusText()}</span>`, gauge);
+    },
+  },
+  { // Segmented: the five saucer windows are the battery bars (20% each).
+    className: 'v-windows',
+    render() {
+      const lit = Math.ceil(state.level / 20);
+      const shapes = [
+        '<rect class="win {c}" x="42" y="74" width="13" height="5.5" rx="2.75" transform="rotate(12 48 77)"/>',
+        '<rect class="win {c}" x="71" y="75" width="10" height="5.5" rx="2.75" transform="rotate(50 76 78)"/>',
+        '<circle class="win {c}" cx="100" cy="78" r="4"/>',
+        '<rect class="win {c}" x="119" y="75" width="10" height="5.5" rx="2.75" transform="rotate(-50 124 78)"/>',
+        '<rect class="win {c}" x="145" y="74" width="13" height="5.5" rx="2.75" transform="rotate(-12 152 77)"/>',
+      ];
+      const windows = shapes.map((shape, i) => shape.replace('{c}', i < lit ? 'lit' : (state.charging && i === lit ? 'next' : ''))).join('');
+      return orbit(`${saucer(windows)}<div class="readout"><span class="pct">${state.level}%${bolt()}</span><span class="bars">${lit}/5</span></div><span class="status">${statusText()}</span>`);
+    },
+  },
+  { // Vertical: a flat tractor beam leaving the hatch, charged from the bottom up.
+    className: 'v-beam',
+    render() {
+      // Same 200-unit artboard as the saucer: the hatch is centred at x 100 with a 28-unit radius,
+      // so the beam starts 56 units wide right under it and opens to 152 units at the bottom.
+      const height = 150, hatchHalf = 28, bottomHalf = 76;
+      const cone = `M${100 - hatchHalf} 0H${100 + hatchHalf}L${100 + bottomHalf} ${height}H${100 - bottomHalf}Z`;
+      const levelY = height - height * state.level / 100;
+      const gaps = Array.from({ length: 12 }, (_, i) => `<rect x="0" y="${i * 16 - 16}" width="200" height="4"/>`).join('');
+      const tractor = `<svg class="tractor" viewBox="0 0 200 ${height}" aria-label="Bateria ${state.level}%">
+        <defs>
+          <clipPath id="beam-cone"><path d="${cone}"/></clipPath>
+          <clipPath id="beam-level"><rect x="0" y="${levelY}" width="200" height="${height - levelY}"/></clipPath>
+        </defs>
+        <g clip-path="url(#beam-cone)">
+          <rect class="empty" width="200" height="${height}"/>
+          <g class="level" clip-path="url(#beam-level)">
+            <rect class="charge" y="${levelY}" width="200" height="${height - levelY}"/>
+            <g class="gaps">${gaps}</g>
+          </g>
+        </g>
+      </svg>`;
+      return orbit(`${saucer('', 'saucer')}${tractor}
+        <div class="readout"><span class="pct">${state.level}%</span>${bolt()}</div><span class="status">${statusText()}</span>`);
+    },
+  },
+];
+
+function page(variant, entering) {
+  const classes = [variant.className, entering ? 'enter' : '', state.charging ? 'is-charging' : '', state.level <= LOW && !state.charging ? 'is-low' : ''].join(' ');
+  return `<div class="page">
+    <div class="titlebar">${saucer()}ufo</div>
+    <div class="shell">
+      <div class="side ${classes}">${variant.render()}</div>
+      <div class="panel"><h1>fone</h1><div class="row">Som ambiente</div><div class="row">Energia</div><div class="row">Aparelho</div></div>
+    </div>
+  </div>`;
+}
+
+// Picker wiring (spec); mounting renders with the entrance, simulation changes re-render without it.
+const stage = document.getElementById('stage');
+const picker = document.querySelector('.proto-picker');
+const highlight = picker.querySelector('.proto-picker-highlight');
+const items = [...picker.querySelectorAll('.proto-picker-item:not(.proto-picker-replay)')];
+const replay = picker.querySelector('.proto-picker-replay');
+let current = 0;
+
+function moveHighlight() {
+  const el = items[current];
+  highlight.style.width = el.offsetWidth + 'px';
+  highlight.style.transform = `translateX(${el.offsetLeft}px)`;
+}
+
+function mount(i) {
+  stage.innerHTML = '';
+  // Clear first, render next frame, so entrance animations re-run.
+  requestAnimationFrame(() => { stage.innerHTML = page(variants[i], true); });
+}
+
+function setActive(i) {
+  if (i < 0 || i >= variants.length) return;
+  current = i;
+  items.forEach((el, j) => {
+    el.toggleAttribute('data-active', j === i);
+    if (j === i) el.setAttribute('aria-current', 'true');
+    else el.removeAttribute('aria-current');
+  });
+  moveHighlight();
+  const url = new URL(location);
+  url.searchParams.set('v', i + 1);
+  history.replaceState(null, '', url);
+  mount(i);
+}
+
+items.forEach((el, i) => el.addEventListener('click', () => setActive(i)));
+replay?.addEventListener('click', () => mount(current));
+window.addEventListener('resize', moveHighlight);
+
+document.addEventListener('keydown', (e) => {
+  if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.target.isContentEditable) return;
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  const num = parseInt(e.key, 10);
+  if (num >= 1 && num <= variants.length) setActive(num - 1);
+  else if (e.key === 'ArrowRight') setActive((current + 1) % variants.length);
+  else if (e.key === 'ArrowLeft') setActive((current - 1 + variants.length) % variants.length);
+  else if (e.key === 'r' || e.key === 'R') mount(current);
+});
+
+const levelInput = document.getElementById('level'), chargingInput = document.getElementById('charging');
+function simulate() {
+  state.level = Number(levelInput.value);
+  state.charging = chargingInput.checked;
+  document.getElementById('levelOut').textContent = `${state.level}%`;
+  stage.innerHTML = page(variants[current], false);
+}
+levelInput.addEventListener('input', simulate);
+chargingInput.addEventListener('change', simulate);
+
+const params = new URLSearchParams(location.search);
+if (params.has('level')) levelInput.value = params.get('level');
+if (params.has('charging')) chargingInput.checked = true;
+state.level = Number(levelInput.value);
+state.charging = chargingInput.checked;
+document.getElementById('levelOut').textContent = `${state.level}%`;
+
+setActive((parseInt(params.get('v'), 10) || 1) - 1);
+// Enable the slide only after first paint, so load doesn't animate.
+requestAnimationFrame(() => requestAnimationFrame(() => picker.setAttribute('data-ready', '')));
+</script>
+</body>
+</html>

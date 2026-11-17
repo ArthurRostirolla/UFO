@@ -1,0 +1,447 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UFO · configurações</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:#000}
+button{font:inherit;color:inherit}
+.app{--ac:#FF5A1F;--bg:#0B0B0C;--line:#232322;--ring:#34342F;--ink:#EDEDEA;--mu:#77776F;--panel:#121213;
+  position:fixed;inset:0;display:grid;grid-template-rows:40px 1fr;background:var(--bg);color:var(--ink);
+  font-family:"Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;overflow:hidden;transition:background-color .3s ease-out}
+.mono{font-family:"Cascadia Mono",Consolas,monospace}
+.titlebar{display:flex;align-items:center;gap:10px;padding-left:16px;font:12px "Cascadia Mono",Consolas,monospace;color:var(--mu)}
+.titlebar .mini{width:22px}
+.titlebar .grow{flex:1}
+.cap{width:46px;height:40px;display:grid;place-items:center;border:0;background:none;color:var(--mu);cursor:pointer;transition:background-color .15s ease-out,color .15s ease-out}
+.cap:hover{background:rgba(255,255,255,.06);color:var(--ink)}
+.cap svg{width:16px;height:16px}
+.gear svg{transition:transform .3s cubic-bezier(.23,1,.32,1)}
+.app[data-settings] .gear{color:var(--ac)}
+.app[data-settings] .gear svg{transform:rotate(90deg)}
+.gear-hint{position:absolute;top:44px;right:150px;font:11px "Cascadia Mono",Consolas,monospace;color:var(--ac);opacity:0;animation:hint .4s ease-out 1s forwards}
+.app[data-settings] .gear-hint{display:none}
+@keyframes hint{to{opacity:.9}}
+.shell{display:grid;grid-template-columns:4fr 6fr;min-height:0}
+.side{position:relative;display:grid;place-items:center;border-right:1px solid var(--line)}
+.orbit{position:relative;width:310px;height:310px}
+.ring{position:absolute;inset:0;border:1px dashed var(--ring);border-radius:50%;transition:border-color .3s ease-out}
+.moon{position:absolute;width:62px;height:62px;margin:-31px 0 0 -31px;border-radius:50%;border:1px solid var(--line);background:var(--bg);display:grid;place-items:center;color:var(--mu);transition:opacity .25s ease-out,transform .25s cubic-bezier(.23,1,.32,1),background-color .3s ease-out,border-color .3s ease-out}
+.moon.on{background:var(--ac);border-color:var(--ac);color:var(--bg)}
+.moon span{position:absolute;top:70px;font:11px "Cascadia Mono",Consolas,monospace;color:var(--mu);white-space:nowrap}
+.core{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px}
+.slot{width:118px;height:54px}
+.pct{font:500 28px "Cascadia Mono",Consolas,monospace}
+.status{font:11px "Cascadia Mono",Consolas,monospace;color:var(--mu)}
+.main{position:relative;overflow:auto;padding:56px 64px}
+.title{display:flex;align-items:center;gap:12px;font-size:40px;font-weight:500;margin:0 0 28px}
+.title::before{content:"";width:10px;height:10px;border-radius:50%;background:var(--ac);transition:background-color .3s ease-out}
+.home .row{border-top:1px solid var(--line);padding:20px 0;color:var(--mu);font-size:14px}
+.settings{display:none;max-width:640px}
+.app[data-settings] .home{display:none}
+.app[data-settings] .settings{display:block;animation:panelIn .28s cubic-bezier(.23,1,.32,1)}
+@keyframes panelIn{from{opacity:0;transform:translateX(14px)}}
+.back{margin-left:auto;border:0;background:none;color:var(--mu);font:12px "Cascadia Mono",Consolas,monospace;cursor:pointer}
+.back:hover{color:var(--ink)}
+.group{border-top:1px solid var(--line);padding:22px 0}
+.kicker{font:11px "Cascadia Mono",Consolas,monospace;color:var(--mu);margin:0 0 14px}
+.swatches{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.swatch{width:40px;height:40px;border-radius:50%;border:2px solid transparent;background:var(--c);cursor:pointer;transition:transform .15s ease-out,border-color .2s ease-out;outline-offset:3px}
+.swatch:hover{transform:scale(1.08)}
+.swatch:active{transform:scale(.95)}
+.swatch[aria-pressed=true]{border-color:var(--ink);box-shadow:inset 0 0 0 3px var(--bg)}
+.custom{position:relative;width:40px;height:40px;border-radius:50%;border:1px dashed var(--mu);display:grid;place-items:center;color:var(--mu);cursor:pointer;overflow:hidden}
+.custom input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.custom-label{font:11px "Cascadia Mono",Consolas,monospace;color:var(--mu)}
+.themes{display:flex;gap:12px;flex-wrap:wrap}
+.theme{width:132px;padding:10px;border-radius:10px;border:1px solid var(--line);background:none;cursor:pointer;text-align:left;transition:border-color .2s ease-out,transform .15s ease-out}
+.theme:active{transform:scale(.98)}
+.theme[aria-pressed=true]{border-color:var(--ac)}
+.theme i{display:block;height:44px;border-radius:6px;margin-bottom:8px;background:var(--tbg);position:relative}
+.theme i::after{content:"";position:absolute;left:10px;bottom:10px;width:10px;height:10px;border-radius:50%;background:var(--ac)}
+.theme b{font-weight:500;font-size:14px}
+.toggle{display:flex;width:100%;align-items:center;justify-content:space-between;gap:16px;border:0;background:none;padding:12px 0;text-align:left;cursor:pointer;font-size:16px}
+.toggle small{display:block;color:var(--mu);font-size:13px;margin-top:3px;max-width:430px}
+.knob{flex:none;width:34px;height:18px;border:1px solid #3A3A36;border-radius:4px;position:relative;transition:border-color .2s ease-out}
+.knob::after{content:"";position:absolute;top:3px;left:3px;width:10px;height:10px;border-radius:2px;background:var(--mu);transition:transform .2s cubic-bezier(.23,1,.32,1),background-color .2s ease-out}
+.toggle[aria-pressed=true] .knob{border-color:var(--ac)}
+.toggle[aria-pressed=true] .knob::after{transform:translateX(16px);background:var(--ac)}
+
+/* The flying saucer ("pilot"): one element for the whole page, moved with transforms. */
+.pilot{position:absolute;left:0;top:0;width:118px;z-index:20;pointer-events:none;transform-origin:50% 50%;
+  transition:transform .55s cubic-bezier(.23,1,.32,1)}
+.pilot svg{display:block;width:100%;overflow:visible}
+.pilot .float{animation:bob 1.4s ease-in-out infinite alternate}
+@keyframes bob{to{transform:translateY(-5px)}}
+.pilot .beam{position:absolute;left:50%;top:86%;width:70%;margin-left:-35%;height:var(--beam-h,0px);background:linear-gradient(to bottom,var(--beam-c,var(--ac)),transparent);clip-path:polygon(36% 0,64% 0,100% 100%,0 100%);opacity:.0;transform-origin:top;transform:scaleY(.2);transition:opacity .2s ease-out,transform .2s ease-out}
+.pilot.beaming .beam{opacity:.55;transform:scaleY(1)}
+.pilot.zap .beam{animation:zap .45s ease-out}
+@keyframes zap{0%{opacity:.9;transform:scaleY(1)}100%{opacity:.55}}
+.u-dome,.u-light,.u-hatch{fill:var(--dome,var(--ac));transition:fill .3s ease-out}
+.u-hull{fill:var(--ink)}
+.u-edge{stroke:var(--bg);transition:stroke .3s ease-out}
+
+/* 2 · Paleta orbital: accent swatches become the moons; the saucer travels along the ring. */
+.v-orbital .pivot{position:absolute;left:50%;top:50%;width:0;height:0;transition:transform .6s cubic-bezier(.23,1,.32,1)}
+.v-orbital .arm{position:absolute;width:76px;margin:-17px 0 0 -38px;transition:transform .6s cubic-bezier(.23,1,.32,1)}
+.v-orbital .arm svg{display:block;width:100%;overflow:visible}
+.v-orbital .arm .beam{position:absolute;left:50%;top:80%;width:60%;margin-left:-30%;height:36px;background:linear-gradient(to bottom,var(--ac),transparent);clip-path:polygon(36% 0,64% 0,100% 100%,0 100%);opacity:0;transition:opacity .2s ease-out}
+.v-orbital .arm.zap .beam{opacity:.7}
+.v-orbital .color-moon{position:absolute;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;border:2px solid var(--bg);background:var(--c);cursor:pointer;opacity:0;transform:scale(.4);transition:opacity .25s ease-out,transform .25s cubic-bezier(.23,1,.32,1)}
+.v-orbital[data-settings] .color-moon{opacity:1;transform:scale(1)}
+.v-orbital[data-settings] .color-moon:hover{transform:scale(1.12)}
+.v-orbital .color-moon[aria-pressed=true]{border-color:var(--ink)}
+.v-orbital[data-settings] .moon{opacity:0;transform:scale(.6);pointer-events:none}
+.v-orbital[data-settings] .core .slot{visibility:hidden}
+.v-orbital .orbit-caption{position:absolute;left:0;right:0;bottom:-58px;text-align:center;font:11px "Cascadia Mono",Consolas,monospace;color:var(--mu);opacity:0;transition:opacity .25s ease-out}
+.v-orbital[data-settings] .orbit-caption{opacity:1}
+
+/* 3 · Cabine: a deck rises over the app; the saucer becomes a big live preview above it. */
+.v-cabin .deck{position:absolute;left:0;right:0;bottom:0;top:40px;z-index:10;background:var(--bg);border-top:1px solid var(--line);
+  display:grid;grid-template-rows:auto 1fr;transform:translateY(100%);transition:transform .32s cubic-bezier(.32,.72,0,1),background-color .3s ease-out;visibility:hidden}
+.v-cabin[data-settings] .deck{transform:none;visibility:visible}
+.v-cabin[data-settings] .settings{display:none}
+.v-cabin[data-settings] .home{display:block}
+.v-cabin .sky{position:relative;height:250px;display:grid;place-items:end center;border-bottom:1px solid var(--line)}
+.v-cabin .horizon{width:min(520px,70%);height:12px;border-radius:50%;background:color-mix(in srgb,var(--ac) 22%,transparent);margin-bottom:26px}
+.v-cabin .deck-head{position:absolute;top:22px;left:40px;right:40px;display:flex;align-items:center}
+.v-cabin .deck-head .title{font-size:28px;margin:0}
+.v-cabin .controls{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:40px;padding:28px 40px;overflow:auto}
+.v-cabin .controls .group{border:0;padding:0}
+.v-cabin .tray{position:absolute;right:22px;bottom:14px;display:flex;gap:10px;align-items:center;font:11px "Cascadia Mono",Consolas,monospace;color:var(--mu);opacity:0;transition:opacity .2s ease-out;z-index:11}
+.v-cabin .tray i{width:26px;height:26px;border-radius:6px;border:1px solid var(--line);display:block}
+.v-cabin[data-tray] .tray{opacity:1}
+.pilot.loop .float{animation:loop .6s cubic-bezier(.23,1,.32,1)}
+@keyframes loop{0%{transform:none}50%{transform:translateY(-18px) rotate(180deg) scale(.9)}100%{transform:rotate(360deg)}}
+.pilot.hop .float{animation:hop .4s cubic-bezier(.23,1,.32,1)}
+@keyframes hop{50%{transform:translateY(-14px)}}
+
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+
+/* picker (verbatim spec) */
+.proto-picker{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:2147483647;display:flex;align-items:center;gap:2px;padding:4px;border-radius:999px;background:rgba(10,10,10,.82);-webkit-backdrop-filter:blur(12px) saturate(1.4);backdrop-filter:blur(12px) saturate(1.4);box-shadow:0 0 0 1px rgba(255,255,255,.08) inset,0 8px 24px rgba(0,0,0,.24),0 2px 6px rgba(0,0,0,.12);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:13px;line-height:1;-webkit-font-smoothing:antialiased;user-select:none;-webkit-user-select:none}
+.proto-picker-highlight{position:absolute;top:4px;left:0;height:28px;border-radius:999px;background:rgba(255,255,255,.12);will-change:transform}
+.proto-picker[data-ready] .proto-picker-highlight{transition:transform 250ms cubic-bezier(.23,1,.32,1),width 250ms cubic-bezier(.23,1,.32,1)}
+@media (prefers-reduced-motion:reduce){.proto-picker[data-ready] .proto-picker-highlight{transition:none}}
+.proto-picker-item{position:relative;display:flex;align-items:center;height:28px;padding:0 12px;border:0;border-radius:999px;background:transparent;color:rgba(255,255,255,.55);font:inherit;cursor:pointer;transition:color 150ms ease-out}
+.proto-picker-item:hover{color:rgba(255,255,255,.85)}
+.proto-picker-item:active{transform:scale(.97)}
+.proto-picker-item:focus-visible{outline:2px solid rgba(255,255,255,.4);outline-offset:2px}
+.proto-picker-item[data-active]{color:#fff}
+.proto-picker-divider{width:1px;height:16px;margin:0 4px;background:rgba(255,255,255,.12)}
+.proto-picker-replay{padding:0 10px;font-size:14px}
+.proto-picker[data-position="top"]{bottom:auto;top:24px}
+</style>
+</head>
+<body>
+<div id="stage"></div>
+
+<nav class="proto-picker" aria-label="Prototype variants">
+  <span class="proto-picker-highlight" aria-hidden="true"></span>
+  <button class="proto-picker-item" data-active aria-current="true">Hangar</button>
+  <button class="proto-picker-item">Paleta orbital</button>
+  <button class="proto-picker-item">Cabine</button>
+  <span class="proto-picker-divider" aria-hidden="true"></span>
+  <button class="proto-picker-item proto-picker-replay" aria-label="Replay animation (R)">↻</button>
+</nav>
+
+<script>
+// ── Personalisation state shared by every variant (simulated; the real app would persist it) ──
+const ACCENTS = [
+  ['Laranja', '#FF5A1F'], ['Ciano', '#2FD8C8'], ['Lima', '#B8F03C'],
+  ['Rosa', '#FF6FC8'], ['Violeta', '#8C7BFF'], ['Âmbar', '#FFB020'],
+];
+const THEMES = [
+  ['Grafite', { bg: '#0B0B0C', line: '#232322', ring: '#34342F' }],
+  ['Espaço', { bg: '#0A0E18', line: '#1B2233', ring: '#2A3550' }],
+  ['Ameixa', { bg: '#120B18', line: '#2A1D33', ring: '#3B2A47' }],
+];
+const state = { accent: '#FF5A1F', theme: 'Grafite', startWithWindows: true, runInBackground: false };
+
+function applyTheme(root) {
+  const theme = THEMES.find(([name]) => name === state.theme)[1];
+  root.style.setProperty('--ac', state.accent);
+  root.style.setProperty('--bg', theme.bg);
+  root.style.setProperty('--line', theme.line);
+  root.style.setProperty('--ring', theme.ring);
+  root.querySelectorAll('[data-accent]').forEach((el) => el.setAttribute('aria-pressed', String(el.dataset.accent.toLowerCase() === state.accent.toLowerCase())));
+  root.querySelectorAll('[data-theme]').forEach((el) => el.setAttribute('aria-pressed', String(el.dataset.theme === state.theme)));
+  root.querySelectorAll('[data-flag]').forEach((el) => el.setAttribute('aria-pressed', String(state[el.dataset.flag])));
+  const custom = root.querySelector('.custom input');
+  if (custom) custom.value = state.accent;
+}
+
+// ── Markup pieces ──
+let clipCount = 0;
+function saucer() {
+  const clip = `lens-${++clipCount}`, lens = 'M14 70C52 38 148 38 186 70C150 106 50 106 14 70Z';
+  return `<svg viewBox="0 18 200 92" aria-hidden="true">
+    <clipPath id="${clip}"><path d="${lens}"/></clipPath>
+    <path class="u-dome u-edge" d="M70 50a30 30 0 0 1 60 0" stroke-width="7"/>
+    <path class="u-hull" d="${lens}"/>
+    <path class="u-edge" d="${lens}" fill="none" stroke-width="7" stroke-linejoin="round"/>
+    <g class="u-light"><rect x="42" y="74" width="13" height="5.5" rx="2.75" transform="rotate(12 48 77)"/><rect x="71" y="75" width="10" height="5.5" rx="2.75" transform="rotate(50 76 78)"/><circle cx="100" cy="78" r="4"/><rect x="119" y="75" width="10" height="5.5" rx="2.75" transform="rotate(-50 124 78)"/><rect x="145" y="74" width="13" height="5.5" rx="2.75" transform="rotate(-12 152 77)"/></g>
+    <ellipse class="u-hatch u-edge" cx="100" cy="97" rx="28" ry="6.5" stroke-width="7"/>
+  </svg>`;
+}
+const ICON = {
+  fone: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="14" width="4.5" height="7" rx="1.6"/><rect x="16.5" y="14" width="4.5" height="7" rx="1.6"/></svg>',
+  mic: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg>',
+  eq: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 8h16M4 16h16"/><circle cx="15" cy="8" r="2" fill="var(--bg)"/><circle cx="9" cy="16" r="2" fill="var(--bg)"/></svg>',
+  gear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
+};
+const moon = (angle, key, label, on) => {
+  const x = 155 + 155 * Math.cos(angle * Math.PI / 180), y = 155 + 155 * Math.sin(angle * Math.PI / 180);
+  return `<div class="moon${on ? ' on' : ''}" style="left:${x}px;top:${y}px">${ICON[key]}<span>${label}</span></div>`;
+};
+const swatches = () => `<div class="swatches">${ACCENTS.map(([name, color]) => `<button class="swatch" data-accent="${color}" style="--c:${color}" aria-label="${name}" title="${name}"></button>`).join('')}
+  <label class="custom" title="Escolher outra cor">+<input type="color" aria-label="Escolher outra cor"></label></div>`;
+const themes = () => `<div class="themes">${THEMES.map(([name, t]) => `<button class="theme" data-theme="${name}" style="--tbg:${t.bg}"><i></i><b>${name}</b></button>`).join('')}</div>`;
+const toggles = () => `
+  <button class="toggle" data-flag="startWithWindows" aria-pressed="false"><span>Iniciar com o Windows<small>Abre minimizado na barra de tarefas quando você liga o PC.</small></span><span class="knob"></span></button>
+  <button class="toggle" data-flag="runInBackground" aria-pressed="false"><span>Continuar em segundo plano<small>Ao fechar a janela, o UFO fica no ícone da bandeja. Para sair de vez, clique com o botão direito no ícone e escolha Fechar.</small></span><span class="knob"></span></button>`;
+const settingsGroups = (withAccent = true) => `
+  ${withAccent ? `<div class="group" data-group="accent"><p class="kicker">cor de destaque</p>${swatches()}</div>` : ''}
+  <div class="group" data-group="theme"><p class="kicker">fundo</p>${themes()}</div>
+  <div class="group" data-group="behaviour"><p class="kicker">comportamento</p>${toggles()}</div>`;
+
+function shell({ className, settings, orbitExtra = '', overlay = '' }) {
+  return `<div class="app ${className}">
+    <div class="titlebar"><span class="mini">${saucer()}</span>ufo<span class="grow"></span>
+      <button class="cap gear" aria-label="Configurações" title="Configurações">${ICON.gear}</button>
+      <span class="cap" aria-hidden="true">–</span><span class="cap" aria-hidden="true">▢</span><span class="cap" aria-hidden="true">✕</span>
+    </div>
+    <span class="gear-hint">configurações →</span>
+    <div class="shell">
+      <aside class="side"><div class="orbit"><div class="ring"></div>
+        ${moon(0, 'fone', 'fone', true)}${moon(120, 'mic', 'microfone')}${moon(240, 'eq', 'equalizador')}
+        ${orbitExtra}
+        <div class="core"><div class="slot"></div><span class="pct">30%</span><span class="status">aw pro · conectado</span></div>
+      </div></aside>
+      <main class="main">
+        <section class="home"><h1 class="title">fone</h1><div class="row">Som ambiente</div><div class="row">Energia</div><div class="row">Aparelho</div></section>
+        <section class="settings"><h1 class="title">configurações<button class="back">voltar</button></h1>${settings}</section>
+      </main>
+    </div>
+    ${overlay}
+    <div class="pilot"><div class="float">${saucer()}</div><div class="beam"></div></div>
+  </div>`;
+}
+
+// ── Pilot (the flying saucer) ──
+function placePilot(root, target, { width = 118, above = 0 } = {}) {
+  const pilot = root.querySelector('.pilot'), box = root.getBoundingClientRect(), rect = target.getBoundingClientRect();
+  const height = width * 92 / 200;
+  const x = rect.left - box.left + rect.width / 2 - width / 2;
+  const y = rect.top - box.top + rect.height / 2 - height / 2 - above;
+  pilot.style.width = `${width}px`;
+  pilot.style.transform = `translate(${x}px, ${y}px)`;
+}
+function pulse(el, className, ms = 600) {
+  el.classList.remove(className); void el.offsetWidth; el.classList.add(className);
+  setTimeout(() => el.classList.remove(className), ms);
+}
+
+// ── Variants ──
+const variants = [
+  { // 1 · Hangar: the saucer leaves the orbit and hovers over whatever setting you point at, beaming it.
+    render: () => shell({ className: 'v-hangar', settings: settingsGroups() }),
+    open(root) { placePilot(root, root.querySelector('.settings .title'), { width: 84, above: -2 }); this.parkX(root); },
+    parkX(root) {
+      const pilot = root.querySelector('.pilot'), title = root.querySelector('.settings .title');
+      const box = root.getBoundingClientRect(), rect = title.getBoundingClientRect();
+      pilot.style.width = '84px';
+      pilot.style.transform = `translate(${rect.right - box.left - 84}px, ${rect.top - box.top - 34}px)`;
+      pilot.classList.remove('beaming');
+    },
+    point(root, target) {
+      const pilot = root.querySelector('.pilot');
+      const box = root.getBoundingClientRect(), rect = target.getBoundingClientRect();
+      pilot.style.width = '84px';
+      pilot.style.setProperty('--beam-h', '34px');
+      pilot.style.transform = `translate(${rect.left - box.left + rect.width / 2 - 42}px, ${rect.top - box.top - 70}px)`;
+      pilot.classList.add('beaming');
+    },
+    leave(root) { this.parkX(root); },
+    picked(root) { pulse(root.querySelector('.pilot'), 'zap', 450); },
+  },
+  { // 2 · Paleta orbital: the moons become colours and the saucer travels along the ring to the one you pick.
+    render: () => shell({
+      className: 'v-orbital',
+      settings: settingsGroups(false),
+      orbitExtra: ACCENTS.map(([name, color], i) => {
+        const angle = -90 + i * 60, x = 155 + 155 * Math.cos(angle * Math.PI / 180), y = 155 + 155 * Math.sin(angle * Math.PI / 180);
+        return `<button class="color-moon" data-accent="${color}" data-angle="${angle}" style="left:${x}px;top:${y}px;--c:${color}" aria-label="${name}" title="${name}"></button>`;
+      }).join('') + `<div class="pivot"><div class="arm">${saucer()}<div class="beam"></div></div></div><div class="orbit-caption">clique numa cor · o disco vai buscá-la</div>`,
+    }),
+    angle: -90,
+    open(root) {
+      root.querySelector('.pilot').style.opacity = '0';
+      const target = root.querySelector(`.color-moon[aria-pressed=true]`) || root.querySelector('.color-moon');
+      this.travel(root, Number(target.dataset.angle), 118);
+    },
+    close(root) {
+      const pivot = root.querySelector('.pivot'), arm = root.querySelector('.arm');
+      arm.style.transform = `translate(0px, -26px) rotate(${-this.angle}deg) scale(1.55)`;
+      setTimeout(() => { if (!root.hasAttribute('data-settings')) root.querySelector('.pilot').style.opacity = '1'; arm.style.opacity = '0'; }, 560);
+      pivot.style.transform = `rotate(${this.angle}deg)`;
+    },
+    travel(root, target, radius = 118) {
+      // Shortest way round, accumulated so it never unwinds.
+      let delta = ((target - this.angle) % 360 + 540) % 360 - 180;
+      this.angle += delta;
+      const pivot = root.querySelector('.pivot'), arm = root.querySelector('.arm');
+      arm.style.opacity = '1';
+      pivot.style.transform = `rotate(${this.angle}deg)`;
+      arm.style.transform = `translate(${radius}px, 0px) rotate(${-this.angle}deg) scale(1)`;
+    },
+    pickColor(root, button, apply) {
+      this.travel(root, Number(button.dataset.angle));
+      setTimeout(() => { const arm = root.querySelector('.arm'); pulse(arm, 'zap', 420); apply(); }, 520);
+    },
+    picked() {},
+  },
+  { // 3 · Cabine: a deck rises over the app with the saucer as a big live preview that reacts to each choice.
+    render: () => shell({
+      className: 'v-cabin', settings: '',
+      overlay: `<div class="deck"><div class="sky"><div class="deck-head"><h1 class="title">configurações</h1><button class="back">voltar</button></div><div class="horizon"></div></div>
+        <div class="controls">${settingsGroups()}</div></div>
+        <div class="tray"><span>bandeja</span><i></i></div>`,
+    }),
+    // Aim at the sky's final layout box (offsets ignore the deck's rising transform).
+    open(root) {
+      const deck = root.querySelector('.deck'), sky = root.querySelector('.sky'), pilot = root.querySelector('.pilot');
+      const width = 230, height = width * 92 / 200;
+      const x = deck.offsetLeft + sky.offsetLeft + sky.offsetWidth / 2 - width / 2;
+      const y = deck.offsetTop + sky.offsetTop + sky.offsetHeight / 2 - height / 2 + 10;
+      pilot.style.width = `${width}px`;
+      pilot.style.transform = `translate(${x}px, ${y}px)`;
+    },
+    preview(root, color) { root.querySelector('.pilot').style.setProperty('--dome', color); },
+    unpreview(root) { root.querySelector('.pilot').style.removeProperty('--dome'); },
+    picked(root, kind, value) {
+      const pilot = root.querySelector('.pilot');
+      if (kind === 'runInBackground' && value) {
+        // Show where it goes: the saucer shrinks into the tray corner, then comes back.
+        root.setAttribute('data-tray', '');
+        const tray = root.querySelector('.tray i');
+        placePilot(root, tray, { width: 30 });
+        setTimeout(() => this.open(root), 1000);
+        setTimeout(() => root.removeAttribute('data-tray'), 1500);
+      } else if (kind === 'startWithWindows' || kind === 'runInBackground') pulse(pilot, 'hop', 420);
+      else pulse(pilot, 'loop', 620);
+    },
+  },
+];
+
+function init(root, variant) {
+  applyTheme(root);
+  const pilot = root.querySelector('.pilot');
+  const home = () => placePilot(root, root.querySelector('.core .slot'));
+  pilot.style.transition = 'none';
+  home();
+  requestAnimationFrame(() => { pilot.style.transition = ''; });
+
+  const setOpen = (isOpen) => {
+    root.toggleAttribute('data-settings', isOpen);
+    if (isOpen) variant.open(root);
+    else {
+      variant.close?.(root);
+      pilot.classList.remove('beaming');
+      if (!variant.close) home();
+    }
+  };
+  root.querySelector('.gear').addEventListener('click', () => setOpen(!root.hasAttribute('data-settings')));
+  root.querySelectorAll('.back').forEach((b) => b.addEventListener('click', () => setOpen(false)));
+  window.addEventListener('resize', () => { if (!root.isConnected) return; if (root.hasAttribute('data-settings')) variant.open(root); else home(); });
+
+  root.addEventListener('click', (e) => {
+    const accent = e.target.closest('[data-accent]'), theme = e.target.closest('[data-theme]'), flag = e.target.closest('[data-flag]');
+    if (accent) {
+      const apply = () => { state.accent = accent.dataset.accent; applyTheme(root); };
+      if (variant.pickColor && accent.classList.contains('color-moon')) variant.pickColor(root, accent, apply);
+      else { apply(); variant.picked(root, 'accent', state.accent); }
+    } else if (theme) { state.theme = theme.dataset.theme; applyTheme(root); variant.picked(root, 'theme', state.theme); }
+    else if (flag) { state[flag.dataset.flag] = !state[flag.dataset.flag]; applyTheme(root); variant.picked(root, flag.dataset.flag, state[flag.dataset.flag]); }
+  });
+  root.querySelector('.custom input')?.addEventListener('input', (e) => { state.accent = e.target.value; applyTheme(root); variant.picked(root, 'accent', state.accent); });
+
+  // Hangar: follow the pointer over rows; Cabine: preview a colour on hover.
+  root.addEventListener('pointerover', (e) => {
+    if (!root.hasAttribute('data-settings')) return;
+    const item = e.target.closest('.swatch,.theme,.toggle,.custom');
+    if (item && variant.point) variant.point(root, item);
+    const swatch = e.target.closest('.swatch');
+    if (swatch && variant.preview) variant.preview(root, swatch.dataset.accent);
+  });
+  root.addEventListener('pointerout', (e) => {
+    if (!root.hasAttribute('data-settings')) return;
+    const to = e.relatedTarget && e.relatedTarget.closest?.('.swatch,.theme,.toggle,.custom');
+    if (!to && variant.leave) variant.leave(root);
+    if (e.target.closest('.swatch') && variant.unpreview) variant.unpreview(root);
+  });
+
+  if (new URLSearchParams(location.search).has('open')) setTimeout(() => setOpen(true), 300);
+}
+
+// ── Picker wiring (spec) ──
+const stage = document.getElementById('stage');
+const picker = document.querySelector('.proto-picker');
+const highlight = picker.querySelector('.proto-picker-highlight');
+const items = [...picker.querySelectorAll('.proto-picker-item:not(.proto-picker-replay)')];
+const replay = picker.querySelector('.proto-picker-replay');
+let current = 0;
+
+function moveHighlight() {
+  const el = items[current];
+  highlight.style.width = el.offsetWidth + 'px';
+  highlight.style.transform = `translateX(${el.offsetLeft}px)`;
+}
+
+function mount(i) {
+  stage.innerHTML = '';
+  // Clear first, render next frame, so entrance animations re-run.
+  requestAnimationFrame(() => {
+    stage.innerHTML = variants[i].render();
+    if (variants[i].angle !== undefined) variants[i].angle = -90;
+    init(stage.firstElementChild, variants[i]);
+  });
+}
+
+function setActive(i) {
+  if (i < 0 || i >= variants.length) return;
+  current = i;
+  items.forEach((el, j) => {
+    el.toggleAttribute('data-active', j === i);
+    if (j === i) el.setAttribute('aria-current', 'true');
+    else el.removeAttribute('aria-current');
+  });
+  moveHighlight();
+  const url = new URL(location);
+  url.searchParams.set('v', i + 1);
+  history.replaceState(null, '', url);
+  mount(i);
+}
+
+items.forEach((el, i) => el.addEventListener('click', () => setActive(i)));
+replay?.addEventListener('click', () => mount(current));
+window.addEventListener('resize', moveHighlight);
+
+document.addEventListener('keydown', (e) => {
+  if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.target.isContentEditable) return;
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  const num = parseInt(e.key, 10);
+  if (num >= 1 && num <= variants.length) setActive(num - 1);
+  else if (e.key === 'ArrowRight') setActive((current + 1) % variants.length);
+  else if (e.key === 'ArrowLeft') setActive((current - 1 + variants.length) % variants.length);
+  else if (e.key === 'r' || e.key === 'R') mount(current);
+});
+
+setActive((parseInt(new URLSearchParams(location.search).get('v'), 10) || 1) - 1);
+// Enable the slide only after first paint, so load doesn't animate.
+requestAnimationFrame(() => requestAnimationFrame(() => picker.setAttribute('data-ready', '')));
+</script>
+</body>
+</html>
