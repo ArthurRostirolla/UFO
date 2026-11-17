@@ -44,7 +44,7 @@
                 <ColumnDefinition Width="6*" />
             </Grid.ColumnDefinitions>
 
-            <!-- Orbit: the three sections are moons around the saucer; the ring turns the open one to the front.
+            <!-- Orbit: the four sections are moons around the saucer; the ring turns the open one to the front.
                  Moon labels sit on a page-coloured plate so the dashed ring passes behind them, not through them. -->
             <Border BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,0,1,0">
                 <Grid Width="310" Height="310">
@@ -61,7 +61,7 @@
                             </RadioButton>
                             <TextBlock Text="fone" Style="{StaticResource Kicker}" Margin="0" Padding="6,0" Background="{DynamicResource BgBrush}" HorizontalAlignment="Center" VerticalAlignment="Bottom" />
                         </Grid>
-                        <Grid x:Name="MicMoon" Canvas.Left="27.5" Canvas.Top="239.2" Width="100" Height="100" RenderTransformOrigin="0.5,0.5">
+                        <Grid x:Name="MicMoon" Canvas.Left="105" Canvas.Top="260" Width="100" Height="100" RenderTransformOrigin="0.5,0.5">
                             <Grid.RenderTransform><RotateTransform /></Grid.RenderTransform>
                             <RadioButton x:Name="MicMoonButton" GroupName="Section" Style="{StaticResource Moon}" AutomationProperties.Name="Microfone" Tag="mic" Checked="OnSectionChecked"
                                          HorizontalAlignment="Center" VerticalAlignment="Center" ToolTip="Microfone">
@@ -69,13 +69,21 @@
                             </RadioButton>
                             <TextBlock Text="microfone" Style="{StaticResource Kicker}" Margin="0" Padding="6,0" Background="{DynamicResource BgBrush}" HorizontalAlignment="Center" VerticalAlignment="Bottom" />
                         </Grid>
-                        <Grid x:Name="EqMoon" Canvas.Left="27.5" Canvas.Top="-29.2" Width="100" Height="100" RenderTransformOrigin="0.5,0.5">
+                        <Grid x:Name="EqMoon" Canvas.Left="-50" Canvas.Top="105" Width="100" Height="100" RenderTransformOrigin="0.5,0.5">
                             <Grid.RenderTransform><RotateTransform /></Grid.RenderTransform>
                             <RadioButton x:Name="EqMoonButton" GroupName="Section" Style="{StaticResource Moon}" AutomationProperties.Name="Equalizador" Tag="eq" Checked="OnSectionChecked"
                                          HorizontalAlignment="Center" VerticalAlignment="Center" ToolTip="Equalizador">
                                 <TextBlock Text="&#xE9E9;" FontFamily="Segoe Fluent Icons" FontSize="20" />
                             </RadioButton>
                             <TextBlock Text="equalizador" Style="{StaticResource Kicker}" Margin="0" Padding="6,0" Background="{DynamicResource BgBrush}" HorizontalAlignment="Center" VerticalAlignment="Bottom" />
+                        </Grid>
+                        <Grid x:Name="ClipsMoon" Canvas.Left="105" Canvas.Top="-50" Width="100" Height="100" RenderTransformOrigin="0.5,0.5">
+                            <Grid.RenderTransform><RotateTransform /></Grid.RenderTransform>
+                            <RadioButton x:Name="ClipsMoonButton" GroupName="Section" Style="{StaticResource Moon}" AutomationProperties.Name="Clips" Tag="clips" Checked="OnSectionChecked"
+                                         HorizontalAlignment="Center" VerticalAlignment="Center" ToolTip="Clips">
+                                <TextBlock Text="&#xE714;" FontFamily="Segoe Fluent Icons" FontSize="20" />
+                            </RadioButton>
+                            <TextBlock Text="clips" Style="{StaticResource Kicker}" Margin="0" Padding="6,0" Background="{DynamicResource BgBrush}" HorizontalAlignment="Center" VerticalAlignment="Bottom" />
                         </Grid>
                     </Canvas>
                     <!-- Lifted 16 px so the readout clears the lower moon. -->
@@ -368,6 +376,16 @@
 
                     <!-- Configurações: colour engine and app behaviour, opened by the gear in the title bar.
                          Saved as soon as they change, so the save bar hides here. -->
+                    <!-- Clips: replay buffer, gallery and triggers. Built in code (MainWindow.Clips.cs); works without the headset. -->
+                    <StackPanel x:Name="ClipsPanel" Visibility="Collapsed">
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                            <Ellipse x:Name="ClipStateDot" Width="10" Height="10" Fill="{DynamicResource MutedBrush}" Margin="0,6,12,0" />
+                            <TextBlock Text="clips" Style="{StaticResource PanelTitle}" />
+                        </StackPanel>
+                        <TextBlock x:Name="ClipStatusText" Style="{StaticResource Hint}" FontSize="13" TextWrapping="Wrap" Margin="0,0,0,24" />
+                        <StackPanel x:Name="ClipSections" />
+                    </StackPanel>
+
                     <StackPanel x:Name="SettingsPanel" Visibility="Collapsed">
                         <Grid Margin="0,0,0,32">
                             <StackPanel Orientation="Horizontal">

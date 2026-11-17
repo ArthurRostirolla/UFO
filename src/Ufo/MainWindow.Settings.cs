@@ -144,7 +144,7 @@ public partial class MainWindow
             return;
         }
         // Release the moons so clicking any of them (even the current one) leaves the settings.
-        foreach (RadioButton moon in new[] { FoneMoonButton, MicMoonButton, EqMoonButton })
+        foreach (RadioButton moon in new[] { FoneMoonButton, MicMoonButton, EqMoonButton, ClipsMoonButton })
         {
             moon.IsChecked = false;
         }
@@ -157,7 +157,7 @@ public partial class MainWindow
 
     private void CloseSettings()
     {
-        RadioButton moon = currentSection switch { "mic" => MicMoonButton, "eq" => EqMoonButton, _ => FoneMoonButton };
+        RadioButton moon = currentSection switch { "mic" => MicMoonButton, "eq" => EqMoonButton, "clips" => ClipsMoonButton, _ => FoneMoonButton };
         moon.IsChecked = true;
     }
 

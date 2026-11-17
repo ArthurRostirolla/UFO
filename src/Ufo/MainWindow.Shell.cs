@@ -8,13 +8,13 @@ namespace Ufo;
 /// <summary>Órbita shell: the opening abduction and the orbit navigation between sections.</summary>
 public partial class MainWindow
 {
-    private static Duration OrbitTurn => Motion(550);
-    private static readonly IEasingFunction EaseOut = new QuinticEase { EasingMode = EasingMode.EaseOut };
-    private static readonly IEasingFunction EaseIn = new CubicEase { EasingMode = EasingMode.EaseIn };
+    internal static Duration OrbitTurn => Motion(550);
+    internal static readonly IEasingFunction EaseOut = new QuinticEase { EasingMode = EasingMode.EaseOut };
+    internal static readonly IEasingFunction EaseIn = new CubicEase { EasingMode = EasingMode.EaseIn };
     private static readonly IEasingFunction EaseInOut = new SineEase { EasingMode = EasingMode.EaseInOut };
 
     /// <summary>Where each section's moon sits on the ring, in degrees from the right-hand side.</summary>
-    private static readonly Dictionary<string, double> MoonAngles = new() { ["fone"] = 0, ["mic"] = 120, ["eq"] = 240 };
+    private static readonly Dictionary<string, double> MoonAngles = new() { ["fone"] = 0, ["mic"] = 90, ["eq"] = 180, ["clips"] = 270 };
 
     private bool isSplashDone;
 
@@ -55,7 +55,7 @@ public partial class MainWindow
     }
 
     /// <summary>A UI motion duration, or zero when Windows animations are turned off.</summary>
-    private static Duration Motion(double milliseconds) =>
+    internal static Duration Motion(double milliseconds) =>
         SystemParameters.ClientAreaAnimation ? TimeSpan.FromMilliseconds(milliseconds) : TimeSpan.Zero;
 
     private void OnMinimizeClick(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
@@ -78,6 +78,8 @@ public partial class MainWindow
         var source = System.Windows.Interop.HwndSource.FromHwnd(new System.Windows.Interop.WindowInteropHelper(this).Handle);
         source?.AddHook(LimitMaximizeToWorkArea);
         source?.AddHook(OfferSnapLayouts);
+        source?.AddHook(OnClipHotkeyMessage);
+        RegisterClipHotkeys();
     }
 
     /// <summary>
@@ -151,7 +153,7 @@ public partial class MainWindow
         onScreen = onScreen > 180 ? onScreen - 360 : onScreen <= -180 ? onScreen + 360 : onScreen;
         ringAngle -= onScreen;
         RingRotation.BeginAnimation(RotateTransform.AngleProperty, new DoubleAnimation(ringAngle, OrbitTurn) { EasingFunction = EaseOut });
-        foreach (FrameworkElement moon in new FrameworkElement[] { FoneMoon, MicMoon, EqMoon })
+        foreach (FrameworkElement moon in new FrameworkElement[] { FoneMoon, MicMoon, EqMoon, ClipsMoon })
         {
             ((RotateTransform)moon.RenderTransform).BeginAnimation(
                 RotateTransform.AngleProperty,
@@ -160,17 +162,22 @@ public partial class MainWindow
 
     }
 
-    /// <summary>Shows one of the right-hand panels ("fone", "mic", "eq" or "settings") with a short slide-in.</summary>
+    /// <summary>Shows one of the right-hand panels ("fone", "mic", "eq", "clips" or "settings") with a short slide-in.</summary>
     private void ShowPanel(string panel)
     {
         FonePanel.Visibility = panel == "fone" ? Visibility.Visible : Visibility.Collapsed;
         MicPanel.Visibility = panel == "mic" ? Visibility.Visible : Visibility.Collapsed;
         EqPanel.Visibility = panel == "eq" ? Visibility.Visible : Visibility.Collapsed;
+        ClipsPanel.Visibility = panel == "clips" ? Visibility.Visible : Visibility.Collapsed;
         SettingsPanel.Visibility = panel == "settings" ? Visibility.Visible : Visibility.Collapsed;
-        SaveBar.Visibility = panel == "settings" ? Visibility.Collapsed : Visibility.Visible; // settings save themselves
+        SaveBar.Visibility = panel is "settings" or "clips" ? Visibility.Collapsed : Visibility.Visible; // these save themselves
         if (panel == "eq")
         {
             DrawEqualizerCurve();
+        }
+        if (panel == "clips")
+        {
+            ShowClipGallery();
         }
         Panels.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(300)) { EasingFunction = EaseOut });
         PanelsShift.BeginAnimation(TranslateTransform.XProperty, new DoubleAnimation(14, 0, TimeSpan.FromMilliseconds(300)) { EasingFunction = EaseOut });
@@ -231,14 +238,14 @@ public partial class MainWindow
         Shell.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(400)) { EasingFunction = EaseOut });
     }
 
-    private readonly record struct Frame(double Seconds, double Value, IEasingFunction? Easing);
+    internal readonly record struct Frame(double Seconds, double Value, IEasingFunction? Easing);
 
-    private static Frame At(double seconds, double value, IEasingFunction? easing = null) => new(seconds, value, easing);
+    internal static Frame At(double seconds, double value, IEasingFunction? easing = null) => new(seconds, value, easing);
 
-    private static void Animate(IAnimatable target, DependencyProperty property, params Frame[] frames) =>
+    internal static void Animate(IAnimatable target, DependencyProperty property, params Frame[] frames) =>
         target.BeginAnimation(property, Keys(frames));
 
-    private static DoubleAnimationUsingKeyFrames Keys(params Frame[] frames)
+    internal static DoubleAnimationUsingKeyFrames Keys(params Frame[] frames)
     {
         var animation = new DoubleAnimationUsingKeyFrames { FillBehavior = FillBehavior.HoldEnd };
         // Hold the first value from time zero so nothing pops before its cue.

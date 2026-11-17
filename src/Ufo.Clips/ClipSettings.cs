@@ -13,10 +13,8 @@ public sealed record ClipSettings(
     int Quality = 2, // 0 low … 3 maximum
     string Codec = "h264",
     int RetroSeconds = 30,
-    bool RecordSystem = true,
-    double SystemVolume = 1,
-    bool RecordMicrophone = true,
-    double MicrophoneVolume = 1,
+    double SystemVolume = 1, // 0 leaves the computer's sound out
+    double MicrophoneVolume = 1, // 0 leaves the microphone out
     int SyncMilliseconds = 0,
     uint ClipModifiers = ClipSettings.Control | ClipSettings.Alt,
     int ClipKey = 'X',

@@ -37,6 +37,30 @@ internal static class NativeMethods
         public uint Flags;
     }
 
+    public const int ExtendedStyle = -20;
+    public const nint Transparent = 0x20, ToolWindow = 0x80, NoActivate = 0x08000000;
+
+    /// <summary>Keeps a window out of screenshots and screen recordings (Windows 10 2004+).</summary>
+    public const uint ExcludeFromCapture = 0x11;
+
+    [DllImport("user32.dll")]
+    public static extern bool RegisterHotKey(nint hwnd, int id, uint modifiers, uint virtualKey);
+
+    [DllImport("user32.dll")]
+    public static extern bool UnregisterHotKey(nint hwnd, int id);
+
+    [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW")]
+    public static extern nint GetWindowLongPtr(nint hwnd, int index);
+
+    [DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW")]
+    public static extern nint SetWindowLongPtr(nint hwnd, int index, nint value);
+
+    [DllImport("user32.dll")]
+    public static extern bool SetWindowPos(nint hwnd, nint after, int x, int y, int width, int height, uint flags);
+
+    [DllImport("user32.dll")]
+    public static extern bool SetWindowDisplayAffinity(nint hwnd, uint affinity);
+
     [DllImport("user32.dll")]
     public static extern nint MonitorFromWindow(nint hwnd, uint flags);
 

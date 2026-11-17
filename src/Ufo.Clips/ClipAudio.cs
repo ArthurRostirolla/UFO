@@ -25,8 +25,6 @@ public sealed class ClipAudio : IDisposable
     private Thread? mixer;
     private volatile bool isRunning;
 
-    public bool RecordSystem { get; set; } = true;
-    public bool RecordMicrophone { get; set; } = true;
     public double SystemVolume { get; set; } = 1;
     public double MicrophoneVolume { get; set; } = 1;
 
@@ -83,8 +81,8 @@ public sealed class ClipAudio : IDisposable
             {
                 Span<float> block = mix.AsSpan(0, frames * 2);
                 block.Clear();
-                Add(block, part, system, RecordSystem ? SystemVolume : 0);
-                Add(block, part, microphone, RecordMicrophone ? MicrophoneVolume : 0);
+                Add(block, part, system, SystemVolume);
+                Add(block, part, microphone, MicrophoneVolume);
                 for (int i = 0; i < block.Length; i++)
                 {
                     block[i] = Math.Clamp(block[i], -1, 1);

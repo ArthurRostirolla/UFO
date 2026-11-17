@@ -54,6 +54,7 @@ public partial class MainWindow
     {
         trayIcon?.Dispose();
         trayIcon = null;
+        CloseClips();
         base.OnClosed(e);
     }
 

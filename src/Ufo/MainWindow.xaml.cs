@@ -34,6 +34,7 @@ public partial class MainWindow : Window
         InitializeBeam();
         InitializeM274();
         InitializeSettings();
+        InitializeClips();
         StartFloating();
         WindowsStartup.Sync();
         SyncTrayIcon();

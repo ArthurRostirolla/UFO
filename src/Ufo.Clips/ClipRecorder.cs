@@ -33,6 +33,12 @@ public sealed class ClipRecorder : IDisposable
 
     public bool IsRecording => recordingFrom is not null;
 
+    /// <summary>How far back the buffer reaches; changes on the fly.</summary>
+    public int RetroSeconds
+    {
+        set => settings = settings with { RetroSeconds = value };
+    }
+
     /// <summary>"h264_qsv · 1920×1080 · 60 fps" for the status line, once running.</summary>
     public string Description { get; private set; } = "";
 
@@ -75,8 +81,6 @@ public sealed class ClipRecorder : IDisposable
         }
         ffmpeg = Run(RecordArguments(wanted, pipeline, width, height, Path.Combine(BufferFolder, "seg%06d.ts")), hasInput: true);
         job.Add(ffmpeg);
-        audio.RecordSystem = wanted.RecordSystem;
-        audio.RecordMicrophone = wanted.RecordMicrophone;
         audio.SystemVolume = wanted.SystemVolume;
         audio.MicrophoneVolume = wanted.MicrophoneVolume;
         audio.Start(ffmpeg.StandardInput.BaseStream);
