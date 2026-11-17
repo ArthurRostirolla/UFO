@@ -31,6 +31,9 @@ public sealed class MicrophoneAnalyzer
     /// <summary>The usual level while speaking, in dBFS (NaN until enough speech was heard).</summary>
     public double SpeechDb => speechDb;
 
+    /// <summary>Whether the last level fed was voice (clearly above the room's noise), usual or not.</summary>
+    public bool IsVoice { get; private set; }
+
     public IEnumerable<(string Kind, string Text)> Feed(double levelDb, double gapMilliseconds, TimeSpan now)
     {
         TimeSpan step = previous == default ? TimeSpan.Zero : now - previous;
@@ -44,6 +47,7 @@ public sealed class MicrophoneAnalyzer
         // Room noise: the quietest the signal gets, allowed to creep up slowly.
         noiseDb = double.IsNaN(noiseDb) ? levelDb : Math.Min(levelDb, noiseDb + 0.5 * step.TotalSeconds);
         bool isVoice = levelDb > noiseDb + AboveNoiseDb && levelDb > -55;
+        IsVoice = isVoice;
         bool isUsual = isVoice && (double.IsNaN(speechDb) || levelDb > speechDb - DropDb);
         if (isUsual)
         {
@@ -77,6 +81,43 @@ public sealed class MicrophoneAnalyzer
             isLow = false; // a pause
         }
     }
+}
+
+/// <summary>
+/// Learns how much quieter the voice arrives when the boom microphone drops out (the headset falls
+/// back to its built-in microphone) and says how much gain makes up for it.
+/// </summary>
+public sealed class BoomCompensation(double? withBoomDb = null, double? withoutBoomDb = null)
+{
+    /// <summary>Less than this is not worth touching the signal; more than the ceiling would mostly raise noise.</summary>
+    public const double SmallestDb = 3, LargestDb = 18;
+
+    /// <summary>Usual speaking level with the boom in place, dBFS.</summary>
+    public double? WithBoomDb { get; private set; } = withBoomDb;
+
+    /// <summary>Speaking level without the boom, as it leaves the headset (before any compensation), dBFS.</summary>
+    public double? WithoutBoomDb { get; private set; } = withoutBoomDb;
+
+    /// <param name="usualSpeechDb">The analyzer's usual speaking level (NaN while unknown).</param>
+    /// <param name="appliedDb">Compensation being applied to what is measured right now.</param>
+    public void Learn(bool isBoomAttached, bool isVoice, double levelDb, double usualSpeechDb, double appliedDb)
+    {
+        if (isBoomAttached)
+        {
+            if (!double.IsNaN(usualSpeechDb) && appliedDb == 0)
+            {
+                WithBoomDb = usualSpeechDb;
+            }
+        }
+        else if (isVoice)
+        {
+            double raw = levelDb - appliedDb;
+            WithoutBoomDb = WithoutBoomDb is { } known ? known + 0.2 * (raw - known) : raw;
+        }
+    }
+
+    /// <summary>Gain to apply while the boom is out; zero until both levels are known or when the gap is small.</summary>
+    public double GainDb => WithBoomDb - WithoutBoomDb is { } gap && gap >= SmallestDb ? Math.Min(gap, LargestDb) : 0;
 }
 
 /// <summary>What the log of events means, in plain words, most important first.</summary>
@@ -159,6 +200,11 @@ public sealed class MicrophoneWatch : IDisposable
     public IReadOnlyCollection<string> Users => users;
 
     public float? Volume => lastVolume;
+
+    /// <summary>Whether the last tenth of a second was voice, and the usual speaking level (NaN while unknown).</summary>
+    public bool IsVoice => analyzer.IsVoice;
+
+    public double SpeechDb => analyzer.SpeechDb;
 
     /// <param name="isAlwaysListening">Listen even when no other program uses the microphone (diagnostic runs).</param>
     public MicrophoneWatch(bool isAlwaysListening = false)

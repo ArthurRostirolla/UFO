@@ -218,6 +218,19 @@ if (args is ["--laughter", string modelPath, ..])
     Expect(conclusions.Count, 2, "volume changes and unexplained drops are told apart");
     Expect(conclusions[1].Contains("1 vez"), true, "the drop right after a volume change is not counted as unexplained");
 
+    // Boom compensation: learns both levels, makes up the gap, within its limits, and never learns from its own boost.
+    var compensation = new BoomCompensation();
+    Expect(compensation.GainDb, 0.0, "nothing known, nothing applied");
+    compensation.Learn(isBoomAttached: true, isVoice: true, levelDb: -24, usualSpeechDb: -25, appliedDb: 0);
+    compensation.Learn(isBoomAttached: false, isVoice: false, levelDb: -70, usualSpeechDb: -25, appliedDb: 0);
+    Expect(compensation.GainDb, 0.0, "a pause without the boom teaches nothing");
+    compensation.Learn(isBoomAttached: false, isVoice: true, levelDb: -37, usualSpeechDb: -25, appliedDb: 0);
+    Expect(compensation.GainDb, 12.0, "voice 12 dB lower without the boom");
+    compensation.Learn(isBoomAttached: false, isVoice: true, levelDb: -25, usualSpeechDb: -25, appliedDb: 12);
+    Expect(compensation.GainDb, 12.0, "the boosted level is read as the raw one");
+    Expect(new BoomCompensation(-25, -60).GainDb, BoomCompensation.LargestDb, "capped");
+    Expect(new BoomCompensation(-25, -27).GainDb, 0.0, "a small gap is left alone");
+
     Console.WriteLine("Microphone watch check passed.");
 }
 

@@ -12,6 +12,8 @@ namespace Ufo;
 /// its signal, writes down every failure (voice dropping, audio stalling, volume being changed) and
 /// says in plain words what they point to. One fix is applied by itself: when a program turns the
 /// microphone volume down during a call, UFO puts it back and keeps it there.
+/// The boom microphone is checked every two seconds during a call: when it drops out, a notice shows
+/// on screen and the voice is raised by what UFO has measured it loses without the boom.
 /// </summary>
 public partial class MainWindow
 {
@@ -23,13 +25,30 @@ public partial class MainWindow
     private readonly DispatcherTimer micWatchTimer = new() { Interval = TimeSpan.FromSeconds(1) };
     private MicrophoneWatch micWatch = null!;
     private bool? wasBoomAttached, wasLinkedForMic;
+    private BoomCompensation boomCompensation = new();
+    private double appliedBoomDb;
+    private bool isAskingBoom;
+    private int micWatchTicks;
 
     private void InitializeMicWatch()
     {
         micEvents.AddRange(ReadMicLog());
         micWatch = new MicrophoneWatch { HeldVolume = (float?)preferences.MicHeldVolume, HoldsWhenTurnedDown = true };
         micWatch.Happened += found => Dispatcher.BeginInvoke(() => AddMicEvent(found));
-        micWatchTimer.Tick += (_, _) => ShowMicWatchState();
+        boomCompensation = new BoomCompensation(preferences.MicWithBoomDb, preferences.MicWithoutBoomDb);
+        micWatchTimer.Tick += async (_, _) =>
+        {
+            ShowMicWatchState();
+            LearnBoomCompensation();
+            // During a call the boom is asked about every two seconds (the regular poll is every ten).
+            if (micWatch.Users.Count > 0 && ++micWatchTicks % 2 == 0 && !isAskingBoom)
+            {
+                isAskingBoom = true;
+                bool? isBoomAttached = await Task.Run(headset.IsBoomMicAttached);
+                isAskingBoom = false;
+                NoteHeadsetForMicWatch(null, isBoomAttached);
+            }
+        };
         micWatchTimer.Start();
         ShowMicWatch();
     }
@@ -97,13 +116,55 @@ public partial class MainWindow
         if (isInUse && wasBoomAttached is { } before && isBoomAttached is { } now && before != now)
         {
             AddMicEvent(new MicrophoneEvent(DateTime.Now, MicrophoneEvent.Device, now ? "a haste do microfone foi reconhecida de novo" : "a haste do microfone deixou de ser reconhecida"));
+            Overlay().Toast(now ? "haste de volta" : "a haste do microfone caiu", now ? "microfone normal" : "confira o encaixe");
         }
         wasLinkedForMic = isLinked ?? wasLinkedForMic;
         wasBoomAttached = isBoomAttached ?? wasBoomAttached;
+        ApplyBoomCompensation();
         if (isBoomAttached is { } isAttached)
         {
             BoomMicText.Text = isAttached ? "Conectado" : "Desconectado";
         }
+    }
+
+    /// <summary>Once a second during a call: how loud the voice is with the boom, and without it.</summary>
+    private void LearnBoomCompensation()
+    {
+        if (!micWatch.IsListening || wasBoomAttached is not { } isAttached || double.IsNegativeInfinity(micWatch.LevelDb))
+        {
+            return;
+        }
+        double before = boomCompensation.GainDb;
+        boomCompensation.Learn(isAttached, micWatch.IsVoice, micWatch.LevelDb, micWatch.SpeechDb, appliedBoomDb);
+        // Saved when it moves by half a decibel, not every second.
+        if (Math.Abs((boomCompensation.WithBoomDb ?? 0) - (preferences.MicWithBoomDb ?? 0)) > 0.5
+            || Math.Abs((boomCompensation.WithoutBoomDb ?? 0) - (preferences.MicWithoutBoomDb ?? 0)) > 0.5)
+        {
+            UpdatePreferences(preferences with { MicWithBoomDb = boomCompensation.WithBoomDb, MicWithoutBoomDb = boomCompensation.WithoutBoomDb });
+        }
+        if (Math.Abs(boomCompensation.GainDb - before) > 0.5)
+        {
+            ApplyBoomCompensation();
+            ShowMicWatch();
+        }
+    }
+
+    /// <summary>Raises the microphone through the M274 while the boom is out during a call; back to normal otherwise.</summary>
+    private void ApplyBoomCompensation()
+    {
+        double wanted = wasBoomAttached == false && micWatch.Users.Count > 0 ? Math.Round(boomCompensation.GainDb, 1) : 0;
+        if (Math.Abs(wanted - appliedBoomDb) < 0.5 && (wanted > 0) == (appliedBoomDb > 0))
+        {
+            return;
+        }
+        bool isStarting = appliedBoomDb <= 0 && wanted > 0;
+        appliedBoomDb = wanted;
+        SendVoiceToM274();
+        if (isStarting)
+        {
+            AddMicEvent(new MicrophoneEvent(DateTime.Now, MicrophoneEvent.Device, $"o UFO aumentou o microfone em {wanted:0} dB enquanto a haste está fora"));
+        }
+        ShowMicWatch();
     }
 
     private void ShowMicWatchState()
@@ -124,6 +185,11 @@ public partial class MainWindow
         {
             MicWatchConclusions.Children.Add(new TextBlock { Text = conclusion, FontSize = 14, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 8) });
         }
+        MicBoomText.Text = boomCompensation.GainDb > 0
+            ? $"Sem a haste a sua voz chega {boomCompensation.GainDb:0} dB mais baixa. Quando a haste cair durante uma chamada, o UFO aumenta o microfone nessa medida até ela voltar.{(appliedBoomDb > 0 ? " Compensando agora." : "")}"
+            : boomCompensation.WithoutBoomDb is null
+                ? "Ainda não medi a sua voz sem a haste. A compensação começa sozinha depois da primeira queda em que você estiver falando."
+                : "Sem a haste a sua voz chega quase no mesmo volume: não há o que compensar.";
         MicHoldVolumeCheck.IsChecked = micWatch.HeldVolume is not null;
         MicHoldVolumeText.Text = micWatch.HeldVolume is { } held ? $"Segurar o volume do microfone em {held:P0}" : "Segurar o volume do microfone";
         MicWatchLogText.Text = string.Join(Environment.NewLine, recent

@@ -123,7 +123,10 @@ public partial class MainWindow
     {
         try
         {
-            m274.SendVoice(voice);
+            // While the boom microphone is out, the learned gain rides on top of the user's chain (or alone, when the chain is off).
+            m274.SendVoice(appliedBoomDb <= 0 ? voice
+                : voice.IsEnabled ? voice with { TrimDb = voice.TrimDb + appliedBoomDb }
+                : new VoiceSettings(IsEnabled: true, IsHighPassOn: false, TrimDb: appliedBoomDb));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
