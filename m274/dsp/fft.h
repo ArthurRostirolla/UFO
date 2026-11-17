@@ -8,7 +8,7 @@
 #include <numbers>
 #include <utility>
 
-namespace ufo {
+namespace m274 {
 
 /// In-place radix-2 FFT for sizes up to 1024, tables built once, no allocation.
 class Fft {
@@ -65,4 +65,4 @@ private:
     std::array<std::uint16_t, kMaxSize> reverse_{};
 };
 
-}  // namespace ufo
+}  // namespace m274

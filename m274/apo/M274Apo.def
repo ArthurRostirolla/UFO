@@ -1,4 +1,4 @@
-LIBRARY UfoApo
+LIBRARY M274Apo
 EXPORTS
     DllGetClassObject   PRIVATE
     DllCanUnloadNow     PRIVATE

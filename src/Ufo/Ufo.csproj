@@ -28,23 +28,23 @@
     <Using Remove="System.Drawing" />
   </ItemGroup>
 
-  <!-- M274 files travel in an "engine" folder beside the app: the native DLL (built from
-       C:\UFO\engine) and the elevated installer. -->
+  <!-- M274 files travel in an "m274" folder beside the app: the native DLL (built from
+       C:\UFO\m274) and the elevated installer. -->
   <ItemGroup>
-    <None Include="..\..\engine\build\UfoApo.dll" Link="engine\UfoApo.dll" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\..\engine\build\UfoApo.dll')" />
-    <ProjectReference Include="..\Ufo.EngineCtl\Ufo.EngineCtl.csproj" ReferenceOutputAssembly="false" />
+    <None Include="..\..\m274\build\M274.dll" Link="m274\M274.dll" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\..\m274\build\M274.dll')" />
+    <ProjectReference Include="..\Ufo.M274Ctl\Ufo.M274Ctl.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
-  <Target Name="CopyEngineCtl" AfterTargets="Build">
+  <Target Name="CopyM274Ctl" AfterTargets="Build">
     <ItemGroup>
-      <EngineCtlFiles Include="..\Ufo.EngineCtl\bin\$(Configuration)\net10.0-windows\ufo-enginectl.*" />
+      <M274CtlFiles Include="..\Ufo.M274Ctl\bin\$(Configuration)\net10.0-windows\m274ctl.*" />
     </ItemGroup>
-    <Copy SourceFiles="@(EngineCtlFiles)" DestinationFolder="$(OutDir)engine" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(M274CtlFiles)" DestinationFolder="$(OutDir)m274" SkipUnchangedFiles="true" />
   </Target>
-  <Target Name="PublishEngineCtl" AfterTargets="Publish">
+  <Target Name="PublishM274Ctl" AfterTargets="Publish">
     <ItemGroup>
-      <EngineCtlPublishFiles Include="..\Ufo.EngineCtl\bin\$(Configuration)\net10.0-windows\ufo-enginectl.*" />
+      <M274CtlPublishFiles Include="..\Ufo.M274Ctl\bin\$(Configuration)\net10.0-windows\m274ctl.*" />
     </ItemGroup>
-    <Copy SourceFiles="@(EngineCtlPublishFiles)" DestinationFolder="$(PublishDir)engine" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(M274CtlPublishFiles)" DestinationFolder="$(PublishDir)m274" SkipUnchangedFiles="true" />
   </Target>
 
   <ItemGroup>

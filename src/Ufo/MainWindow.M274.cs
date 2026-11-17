@@ -8,7 +8,7 @@ using Ufo.Audio;
 namespace Ufo;
 
 /// <summary>
-/// M274 controls: install/remove (through the elevated ufo-enginectl, so every system change
+/// M274 controls: install/remove (through the elevated m274ctl, so every system change
 /// goes through a UAC prompt the user approves) and a live readout proving the engine is processing.
 /// </summary>
 public partial class MainWindow
@@ -21,7 +21,7 @@ public partial class MainWindow
     private string? engineFailure;
     private string busyLabel = "Instalando…";
 
-    private static string EngineCtlPath => Path.Combine(AppContext.BaseDirectory, "engine", "ufo-enginectl.exe");
+    private static string M274CtlPath => Path.Combine(AppContext.BaseDirectory, "m274", "m274ctl.exe");
 
     private void InitializeEngine()
     {
@@ -35,8 +35,8 @@ public partial class MainWindow
 
     private void ShowEngineState()
     {
-        bool isInstalled = EngineClient.IsInstalled();
-        EngineMeters? meters = isInstalled ? engine.ReadMeters() : null;
+        bool isInstalled = M274Client.IsInstalled();
+        M274Meters? meters = isInstalled ? engine.ReadMeters() : null;
         bool isRunning = meters is not null && meters.Blocks != lastEngineBlocks;
         lastEngineBlocks = meters?.Blocks ?? 0;
         isEngineRunning = isRunning;
@@ -51,7 +51,7 @@ public partial class MainWindow
         }
 
         // A Windows or driver update can detach the engine: say so and offer the one-click repair.
-        bool isDetached = !isInstalled && EngineClient.WasInstalled();
+        bool isDetached = !isInstalled && M274Client.WasInstalled();
         EqGateTitle.Text = isDetached ? "O Windows desligou o M274" : "O equalizador precisa do M274";
         if (engineFailure is null)
         {
@@ -86,18 +86,18 @@ public partial class MainWindow
         EngineProgress.Visibility = EqGateProgress.Visibility = isEngineBusy ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    private void OnInstallEngineClick(object sender, RoutedEventArgs e) => RunEngineCtl("install");
+    private void OnInstallEngineClick(object sender, RoutedEventArgs e) => RunM274Ctl("install");
 
-    private void OnRemoveEngineClick(object sender, RoutedEventArgs e) => RunEngineCtl("remove");
+    private void OnRemoveEngineClick(object sender, RoutedEventArgs e) => RunM274Ctl("remove");
 
     /// <summary>Starts the elevated helper; Windows shows the UAC prompt and the user decides.</summary>
-    private async void RunEngineCtl(string verb)
+    private async void RunM274Ctl(string verb)
     {
         if (isEngineBusy)
         {
             return;
         }
-        if (!File.Exists(EngineCtlPath))
+        if (!File.Exists(M274CtlPath))
         {
             engineFailure = "Instalador do M274 não encontrado nesta cópia do app.";
             ShowEngineState();
@@ -112,14 +112,14 @@ public partial class MainWindow
         {
             // Off the UI thread: Process.Start blocks while the UAC prompt is open.
             using Process? process = await Task.Run(() =>
-                Process.Start(new ProcessStartInfo(EngineCtlPath, verb) { UseShellExecute = true, Verb = "runas", WindowStyle = ProcessWindowStyle.Hidden }));
+                Process.Start(new ProcessStartInfo(M274CtlPath, verb) { UseShellExecute = true, Verb = "runas", WindowStyle = ProcessWindowStyle.Hidden }));
             if (process is null)
             {
                 return;
             }
             EngineStateText.Text = "Aplicando… o som do PC para por um instante.";
             await process.WaitForExitAsync();
-            engineFailure = process.ExitCode == 0 ? null : $"A instalação falhou. Detalhes em {EngineClient.DataDirectory}\\enginectl.log";
+            engineFailure = process.ExitCode == 0 ? null : $"A instalação falhou. Detalhes em {M274Client.DataDirectory}\\m274ctl.log";
             if (process.ExitCode == 0)
             {
                 SendToEngine();

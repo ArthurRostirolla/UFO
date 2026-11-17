@@ -4,7 +4,7 @@
 #include <cmath>
 #include <numbers>
 
-namespace ufo {
+namespace m274 {
 
 void Limiter::prepare(double sampleRate, double ceilingDb, double releaseMs) {
     ceiling_ = std::pow(10.0, ceilingDb / 20.0);
@@ -88,4 +88,4 @@ double Limiter::takeMinGain() {
     return value;
 }
 
-}  // namespace ufo
+}  // namespace m274

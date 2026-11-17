@@ -10,7 +10,7 @@
 #include "fft.h"
 #include "limiter.h"
 
-namespace ufo {
+namespace m274 {
 
 enum class BandType : std::uint32_t { Peak = 0, LowShelf = 1, HighShelf = 2, HighPass = 3 };
 
@@ -22,7 +22,7 @@ struct Band {
 };
 
 /// Everything the app controls on the output. Plain data: this exact layout travels through the
-/// mapped settings file (mirrored in src/Ufo.Audio/EngineClient.cs).
+/// mapped settings file (mirrored in src/Ufo.Audio/M274Client.cs).
 struct EngineParams {
     static constexpr std::size_t kMaxBands = 32;
 
@@ -97,4 +97,4 @@ private:
     std::size_t ringPos_ = 0;
 };
 
-}  // namespace ufo
+}  // namespace m274

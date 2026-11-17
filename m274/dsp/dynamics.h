@@ -6,7 +6,7 @@
 #include <cstddef>
 #include <numbers>
 
-namespace ufo {
+namespace m274 {
 
 inline double dbToGain(double db) { return std::pow(10.0, db / 20.0); }
 inline double gainToDb(double gain) { return 20.0 * std::log10(std::max(gain, 1e-9)); }
@@ -82,4 +82,4 @@ private:
     Envelope envelope_;
 };
 
-}  // namespace ufo
+}  // namespace m274

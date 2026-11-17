@@ -4,7 +4,7 @@
 #include <cmath>
 #include <numbers>
 
-namespace ufo {
+namespace m274 {
 
 namespace {
 
@@ -224,4 +224,4 @@ void Engine::analyze() {
     }
 }
 
-}  // namespace ufo
+}  // namespace m274

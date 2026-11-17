@@ -152,7 +152,7 @@ public partial class MainWindow
                 _ => $"No cabo: {rate / 1000} kHz, a melhor qualidade que este microfone entrega.",
             },
         };
-        if (!EngineClient.IsMicrophoneInstalled())
+        if (!M274Client.IsMicrophoneInstalled())
         {
             notes.Add("O M274 ainda não está ligado ao microfone: instale ou reinstale em Configurações.");
         }

@@ -2,14 +2,14 @@ using System.Diagnostics;
 using System.Text.Json;
 using Microsoft.Win32;
 
-// ufo-enginectl install | remove
+// m274ctl install | remove
 //
 // Installs or removes the M274 for the AW Pro headset outputs. Runs elevated (UAC), started by
 // the app when the user clicks the button. Everything it changes is recorded first in
 // C:\ProgramData\UFO\engine-backup.json, and "remove" puts each value back exactly as it was.
 //
 // What "install" changes:
-//   1. copies UfoApo.dll to C:\Program Files\UFO\Engine and registers it (regsvr32);
+//   1. copies M274.dll to C:\Program Files\UFO\M274 and registers it (regsvr32);
 //   2. on each AWPRO output and microphone, points the mode-effect slot (MFX) at the engine;
 //   3. sets DisableProtectedAudioDG=1 so Windows loads an unsigned effect (same switch Equalizer APO uses);
 //   4. lets the audio service read/write C:\ProgramData\UFO;
@@ -28,10 +28,12 @@ const string AudioKey = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Audio";
 const string MistakenAudioKey = @"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Audio";
 const string ProtectedFlag = "DisableProtectedAudioDG";
 const string DataDirectory = @"C:\ProgramData\UFO";
-string installDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "UFO", "Engine");
-string installedDll = Path.Combine(installDirectory, "UfoApo.dll");
+string installDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "UFO", "M274");
+string installedDll = Path.Combine(installDirectory, "M274.dll");
+// Before the M274 rename the DLL lived here; same CLSIDs, so installing M274.dll replaces its registration.
+string legacyDll = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "UFO", "Engine", "UfoApo.dll");
 string backupPath = Path.Combine(DataDirectory, "engine-backup.json");
-string logPath = Path.Combine(DataDirectory, "enginectl.log");
+string logPath = Path.Combine(DataDirectory, "m274ctl.log");
 
 Directory.CreateDirectory(DataDirectory);
 try
@@ -42,7 +44,7 @@ try
         case "remove": Remove(); break;
         case "start-audio": break; // only the "finally" below: turns the audio service back on
         default:
-            Log("uso: ufo-enginectl install | remove | start-audio");
+            Log("uso: m274ctl install | remove | start-audio");
             return 2;
     }
     return 0;
@@ -61,10 +63,10 @@ finally
 
 void Install()
 {
-    string sourceDll = Path.Combine(AppContext.BaseDirectory, "UfoApo.dll");
+    string sourceDll = Path.Combine(AppContext.BaseDirectory, "M274.dll");
     if (!File.Exists(sourceDll))
     {
-        throw new FileNotFoundException("UfoApo.dll não está ao lado do instalador.", sourceDll);
+        throw new FileNotFoundException("M274.dll não está ao lado do instalador.", sourceDll);
     }
 
     // Record the original values once; a second install must not overwrite them with ours.
@@ -94,6 +96,10 @@ void Install()
     Run("net", "stop audiosrv /y");                       // releases the DLL if a previous version is loaded
     File.Copy(sourceDll, installedDll, overwrite: true);
     Run("regsvr32", $"/s \"{installedDll}\"");
+    if (File.Exists(legacyDll))
+    {
+        File.Delete(legacyDll);
+    }
     // Users (the app), LOCAL SERVICE and write-restricted services (audiodg) may modify the data folder.
     Run("icacls", $"\"{DataDirectory}\" /grant *S-1-5-32-545:(OI)(CI)M *S-1-5-19:(OI)(CI)M *S-1-5-33:(OI)(CI)M /T /C /Q");
 
@@ -153,6 +159,11 @@ void Remove()
     {
         Run("regsvr32", $"/u /s \"{installedDll}\"");
         File.Delete(installedDll);
+    }
+    if (File.Exists(legacyDll))
+    {
+        Run("regsvr32", $"/u /s \"{legacyDll}\"");
+        File.Delete(legacyDll);
     }
     Run("net", "start audiosrv");
     File.Delete(backupPath);

@@ -1,12 +1,12 @@
 #pragma once
-// Layout shared with the app (src/Ufo.Audio/EngineClient.cs). Both sides memory-map the same
+// Layout shared with the app (src/Ufo.Audio/M274Client.cs). Both sides memory-map the same
 // files in C:\ProgramData\UFO, so settings are live and also survive restarts.
 #include <cstdint>
 
 #include "engine.h"
 #include "voice.h"
 
-namespace ufo::ipc {
+namespace m274::ipc {
 
 constexpr std::uint32_t kMagic = 0x324F4655;  // "UFO2" (bumped whenever a layout below changes)
 constexpr wchar_t kRenderParamsPath[] = L"C:\\ProgramData\\UFO\\engine.bin";
@@ -42,8 +42,8 @@ struct MetersFile {
     float spectrum[Engine::kSpectrumBands];  // output spectrum in dBFS (render only)
 };
 
-static_assert(sizeof(ParamsFile) == 8 + 48 + 32 * 16, "ParamsFile layout is mirrored in EngineClient.cs");
-static_assert(sizeof(VoiceParamsFile) == 8 + 48 + 8 * 16, "VoiceParamsFile layout is mirrored in EngineClient.cs");
-static_assert(sizeof(MetersFile) == 40 + 32 * 4, "MetersFile layout is mirrored in EngineClient.cs");
+static_assert(sizeof(ParamsFile) == 8 + 48 + 32 * 16, "ParamsFile layout is mirrored in M274Client.cs");
+static_assert(sizeof(VoiceParamsFile) == 8 + 48 + 8 * 16, "VoiceParamsFile layout is mirrored in M274Client.cs");
+static_assert(sizeof(MetersFile) == 40 + 32 * 4, "MetersFile layout is mirrored in M274Client.cs");
 
-}  // namespace ufo::ipc
+}  // namespace m274::ipc

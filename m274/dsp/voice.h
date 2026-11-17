@@ -11,10 +11,10 @@
 #include "fft.h"
 #include "limiter.h"
 
-namespace ufo {
+namespace m274 {
 
 /// Everything the app controls on the microphone. Same rules as EngineParams: plain data, fixed
-/// layout (mirrored in src/Ufo.Audio/EngineClient.cs).
+/// layout (mirrored in src/Ufo.Audio/M274Client.cs).
 struct VoiceParams {
     static constexpr std::size_t kMaxBands = 8;
 
@@ -76,4 +76,4 @@ private:
     Limiter limiter_;
 };
 
-}  // namespace ufo
+}  // namespace m274

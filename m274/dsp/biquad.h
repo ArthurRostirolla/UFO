@@ -1,6 +1,6 @@
 #pragma once
 
-namespace ufo {
+namespace m274 {
 
 /// Normalized biquad coefficients (a0 = 1).
 struct BiquadCoeffs {
@@ -33,4 +33,4 @@ struct BiquadState {
     }
 };
 
-}  // namespace ufo
+}  // namespace m274

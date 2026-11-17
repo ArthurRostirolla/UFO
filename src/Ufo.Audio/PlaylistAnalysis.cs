@@ -21,7 +21,7 @@ public sealed class PlaylistAnalysis
     // playlists if the classification turns out wrong.
     private const double HeavyBassDb = 18, LightBassDb = 6, DullTrebleDb = -30, BrightTrebleDb = -14;
 
-    private readonly double[] power = new double[EngineClient.SpectrumBands];
+    private readonly double[] power = new double[M274Client.SpectrumBands];
     private readonly List<double> levels = [];
     private int frames;
 
@@ -96,7 +96,7 @@ public sealed class PlaylistAnalysis
         return new PlaylistProposal(bands, trim, night, notes.Count == 0 ? "já soa bem como está: nada a mudar" : string.Join("; ", notes));
     }
 
-    private static double Centre(int band) => 20 * Math.Pow(1000, (band + 0.5) / EngineClient.SpectrumBands);
+    private static double Centre(int band) => 20 * Math.Pow(1000, (band + 0.5) / M274Client.SpectrumBands);
 
     /// <summary>Mean level in dB of the bands whose centre falls in a frequency range.</summary>
     private double Level(double low, double high)

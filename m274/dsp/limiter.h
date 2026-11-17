@@ -3,7 +3,7 @@
 #include <array>
 #include <cstddef>
 
-namespace ufo {
+namespace m274 {
 
 /// Stereo-linked look-ahead limiter with inter-sample ("true peak") detection.
 ///
@@ -40,4 +40,4 @@ private:
     std::array<std::array<double, kTaps>, kPhases> interp_{};
 };
 
-}  // namespace ufo
+}  // namespace m274

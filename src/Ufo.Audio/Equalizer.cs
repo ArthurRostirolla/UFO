@@ -2,7 +2,7 @@ using System.Numerics;
 
 namespace Ufo.Audio;
 
-/// <summary>Filter shapes the engine knows (values match BandType in engine/dsp/engine.h).</summary>
+/// <summary>Filter shapes the engine knows (values match BandType in m274/dsp/engine.h).</summary>
 public enum BandKind
 {
     Peak = 0,
@@ -49,7 +49,7 @@ public static class Equalizer
 
     /// <summary>
     /// Headroom (≤ 0 dB) that keeps the curve from boosting above full scale: the real peak of the
-    /// combined curve, like the engine computes it (engine/dsp/engine.cpp), so stacked bands count.
+    /// combined curve, like the engine computes it (m274/dsp/engine.cpp), so stacked bands count.
     /// </summary>
     public static double Preamp(IReadOnlyList<EqBand> bands)
     {

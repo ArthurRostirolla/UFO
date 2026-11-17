@@ -31,7 +31,7 @@ public partial class MainWindow
     private readonly DispatcherTimer profileWatch = new() { Interval = TimeSpan.FromSeconds(1.5) };
     private readonly List<Slider> bandSliders = [];
     private readonly List<TextBlock> bandGainTexts = [];
-    private readonly EngineClient engine = new();
+    private readonly M274Client engine = new();
     private readonly HeadsetAudio headsetAudio = new();
 
     private List<SoundProfile> profiles = [];

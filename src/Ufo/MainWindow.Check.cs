@@ -71,9 +71,9 @@ public partial class MainWindow
             AddCheck(CheckLevel.Warning, "Volume", output.IsMuted ? "O fone está mudo no Windows." : "O volume do Windows está quase no zero.");
         }
 
-        if (!EngineClient.IsInstalled())
+        if (!M274Client.IsInstalled())
         {
-            AddCheck(CheckLevel.Failure, "M274", EngineClient.WasInstalled()
+            AddCheck(CheckLevel.Failure, "M274", M274Client.WasInstalled()
                 ? "O Windows desligou o M274 do fone. Use Reparar, logo acima."
                 : "Não instalado: equalizador e ajustes de Som não têm efeito. Use Instalar M274, logo acima.");
             return;
@@ -83,7 +83,7 @@ public partial class MainWindow
         uint blocksBefore = engine.ReadMeters()?.Blocks ?? 0;
         headsetAudio.PlayTone(1000, -30);
         await Task.Delay(1200);
-        EngineMeters? meters = engine.ReadMeters();
+        M274Meters? meters = engine.ReadMeters();
         headsetAudio.StopTone();
         if (meters is null || meters.Blocks == blocksBefore)
         {
@@ -120,7 +120,7 @@ public partial class MainWindow
         {
             AddCheck(CheckLevel.Warning, "Microfone mudo", "Está mudo no Windows.");
         }
-        if (!EngineClient.IsMicrophoneInstalled())
+        if (!M274Client.IsMicrophoneInstalled())
         {
             AddCheck(CheckLevel.Warning, "M274 no microfone", "Não está ligado: o processamento de voz não tem efeito. Use Instalar ou Reinstalar, logo acima.");
         }

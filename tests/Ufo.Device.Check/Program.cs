@@ -54,13 +54,13 @@ if (Equalizer.ResponseDb(singleBoost, 100) > -5.5)
     throw new Exception("far from the boost the curve should sit near the -6 dB preamp");
 }
 
-// Engine settings file: layout must match engine/apo/ipc.h (magic, even sequence, then the bands).
-using (var client = new EngineClient())
+// Engine settings file: layout must match m274/apo/ipc.h (magic, even sequence, then the bands).
+using (var client = new M274Client())
 {
     client.Send(fps, new SoundSettings());
 }
 // Shared open: the running app and the engine keep this file mapped.
-using var sentFile = new FileStream(Path.Combine(EngineClient.DataDirectory, "engine.bin"), FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+using var sentFile = new FileStream(Path.Combine(M274Client.DataDirectory, "engine.bin"), FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
 byte[] sent = new byte[sentFile.Length];
 sentFile.ReadExactly(sent);
 Expect(sent.Length, 568, "settings file size");
@@ -72,9 +72,9 @@ Expect(BitConverter.ToSingle(sent, 56 + 5 * 16 + 4), 1000f, "sixth band frequenc
 Expect(BitConverter.ToSingle(sent, 56 + 5 * 16 + 8), 3f, "sixth band gain");
 
 // Playlist analysis: music on the reference tilt needs nothing; bass-heavy music keeps its bass and gains clarity.
-static float[] Spectrum(double bassExcessDb) => Enumerable.Range(0, EngineClient.SpectrumBands).Select(band =>
+static float[] Spectrum(double bassExcessDb) => Enumerable.Range(0, M274Client.SpectrumBands).Select(band =>
 {
-    double frequency = 20 * Math.Pow(1000, (band + 0.5) / EngineClient.SpectrumBands);
+    double frequency = 20 * Math.Pow(1000, (band + 0.5) / M274Client.SpectrumBands);
     return (float)(-30 + PlaylistAnalysis.ReferenceDb(frequency) + (frequency < 160 ? bassExcessDb : 0));
 }).ToArray();
 
@@ -85,7 +85,7 @@ for (int frame = 0; frame < 400; frame++)
     balanced.Add(Spectrum(0), 0.7);
     bassy.Add(Spectrum(14), 0.7);
 }
-balanced.Add(Enumerable.Repeat(-120f, EngineClient.SpectrumBands).ToArray(), 0); // silence is ignored
+balanced.Add(Enumerable.Repeat(-120f, M274Client.SpectrumBands).ToArray(), 0); // silence is ignored
 Expect(balanced.SecondsHeard(0.1), 40.0, "silent frames are not counted");
 Expect(balanced.Propose().Bands.Count, 0, "balanced music needs no correction");
 PlaylistProposal bassFix = bassy.Propose();

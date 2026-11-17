@@ -122,17 +122,17 @@ struct INonDelegatingUnknown {
     virtual ULONG STDMETHODCALLTYPE NonDelegatingRelease() = 0;
 };
 
-class UfoApo final : public CBaseAudioProcessingObject, public IAudioSystemEffects, public INonDelegatingUnknown {
+class M274Apo final : public CBaseAudioProcessingObject, public IAudioSystemEffects, public INonDelegatingUnknown {
 public:
     /// audiodg.exe creates system effects aggregated inside its own wrapper object: `outer` is that
     /// wrapper, and every interface handed out must forward IUnknown to it. Refusing aggregation
     /// (CLASS_E_NOAGGREGATION) leaves the endpoint unable to open any stream.
-    UfoApo(bool isCapture, IUnknown* outer)
+    M274Apo(bool isCapture, IUnknown* outer)
         : CBaseAudioProcessingObject(isCapture ? &kCaptureProps : &kRenderProps), isCapture_(isCapture) {
         outer_ = outer ? outer : reinterpret_cast<IUnknown*>(static_cast<INonDelegatingUnknown*>(this));
         InterlockedIncrement(&g_objects);
     }
-    ~UfoApo() override {
+    ~M274Apo() override {
         paramsFile_.close();
         metersFile_.close();
         InterlockedDecrement(&g_objects);
@@ -219,9 +219,9 @@ public:
         if (!canProcess_) return S_OK;  // unknown format: stay loaded as a pass-through
 
         // Until the app writes settings, both chains are bit-exact pass-throughs.
-        ufo::EngineParams renderOff;
+        m274::EngineParams renderOff;
         renderOff.enabled = 0;
-        ufo::VoiceParams voiceOff;
+        m274::VoiceParams voiceOff;
         voiceOff.enabled = 0;
         if (isCapture_) {
             voice_.prepare(sampleRate_);
@@ -230,10 +230,10 @@ public:
             engine_.prepare(sampleRate_);
             engine_.setParams(renderOff);
         }
-        paramsFile_.open(isCapture_ ? ufo::ipc::kCaptureParamsPath : ufo::ipc::kRenderParamsPath, false,
-                         isCapture_ ? sizeof(ufo::ipc::VoiceParamsFile) : sizeof(ufo::ipc::ParamsFile));
-        metersFile_.open(isCapture_ ? ufo::ipc::kCaptureMetersPath : ufo::ipc::kRenderMetersPath, true,
-                         sizeof(ufo::ipc::MetersFile));
+        paramsFile_.open(isCapture_ ? m274::ipc::kCaptureParamsPath : m274::ipc::kRenderParamsPath, false,
+                         isCapture_ ? sizeof(m274::ipc::VoiceParamsFile) : sizeof(m274::ipc::ParamsFile));
+        metersFile_.open(isCapture_ ? m274::ipc::kCaptureMetersPath : m274::ipc::kRenderMetersPath, true,
+                         sizeof(m274::ipc::MetersFile));
         appliedSequence_ = 0xffffffff;
         blocks_ = 0;
         hasTracedFirstBlock_ = false;
@@ -309,17 +309,17 @@ private:
     void pullParams() {
         // Both files start with the same header: magic, then sequence, then the payload.
         auto* header = static_cast<const volatile std::uint32_t*>(paramsFile_.view);
-        if (!header || header[0] != ufo::ipc::kMagic) return;
+        if (!header || header[0] != m274::ipc::kMagic) return;
         std::uint32_t before = header[1];
         if (before == appliedSequence_ || (before & 1)) return;
         const void* payload = static_cast<const BYTE*>(paramsFile_.view) + 2 * sizeof(std::uint32_t);
         if (isCapture_) {
-            ufo::VoiceParams copy;
+            m274::VoiceParams copy;
             CopyMemory(&copy, payload, sizeof(copy));
             if (header[1] != before) return;  // the app was mid-write; try again next block
             voice_.setParams(copy);
         } else {
-            ufo::EngineParams copy;
+            m274::EngineParams copy;
             CopyMemory(&copy, payload, sizeof(copy));
             if (header[1] != before) return;
             engine_.setParams(copy);
@@ -330,7 +330,7 @@ private:
     std::size_t latencyFrames() const { return isCapture_ ? voice_.latencyFrames() : engine_.latencyFrames(); }
 
     void publishMeters(const float* samples, UINT32 frames) {
-        auto* meters = static_cast<ufo::ipc::MetersFile*>(metersFile_.view);
+        auto* meters = static_cast<m274::ipc::MetersFile*>(metersFile_.view);
         if (!meters) return;
         float peakLeft = 0, peakRight = 0;
         for (UINT32 frame = 0; frame < frames; ++frame) {
@@ -338,7 +338,7 @@ private:
             peakLeft = std::max(peakLeft, left < 0 ? -left : left);
             peakRight = std::max(peakRight, right < 0 ? -right : right);
         }
-        meters->magic = ufo::ipc::kMagic;
+        meters->magic = m274::ipc::kMagic;
         meters->peakLeft = peakLeft;
         meters->peakRight = peakRight;
         meters->limiterGain = static_cast<float>(isCapture_ ? voice_.takeLimiterMinGain() : engine_.takeLimiterMinGain());
@@ -359,8 +359,8 @@ private:
     UINT32 channels_ = 0;
     float sampleRate_ = 0;
     std::uint32_t appliedSequence_ = 0xffffffff, blocks_ = 0;
-    ufo::Engine engine_;      // render endpoints
-    ufo::VoiceChain voice_;   // capture endpoints
+    m274::Engine engine_;      // render endpoints
+    m274::VoiceChain voice_;   // capture endpoints
     MappedFile paramsFile_, metersFile_;
 };
 
@@ -387,7 +387,7 @@ public:
         if (!object) return E_POINTER;
         *object = nullptr;
         if (outer && iid != __uuidof(IUnknown)) return CLASS_E_NOAGGREGATION;  // COM rule: an aggregator asks for IUnknown
-        auto* apo = new (std::nothrow) UfoApo(isCapture_, outer);
+        auto* apo = new (std::nothrow) M274Apo(isCapture_, outer);
         if (!apo) return E_OUTOFMEMORY;
         HRESULT result = apo->NonDelegatingQueryInterface(iid, object);
         apo->NonDelegatingRelease();

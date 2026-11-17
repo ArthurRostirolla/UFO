@@ -4,7 +4,7 @@
 #include <complex>
 #include <numbers>
 
-namespace ufo {
+namespace m274 {
 
 namespace {
 
@@ -88,4 +88,4 @@ double magnitudeDb(const BiquadCoeffs& c, double sampleRate, double frequency) {
     return 20 * std::log10(std::abs(h));
 }
 
-}  // namespace ufo
+}  // namespace m274

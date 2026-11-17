@@ -8,9 +8,9 @@ App para Windows que controla o headset Alienware AW Pro: ANC, microfone, bateri
 
 - `src/Ufo` — app WPF
 - `src/Ufo.Device` — protocolo HID do headset
-- `src/Ufo.Audio` — equalizador e comunicação com o engine
-- `src/Ufo.EngineCtl` — instala e remove o engine
-- `engine` — DSP e APO em C++
+- `src/Ufo.Audio` — equalizador e comunicação com o M274
+- `src/Ufo.M274Ctl` — instala e remove o M274
+- `m274` — M274: DSP e APO em C++
 - `tests` — verificação do protocolo
 - `prototypes` — protótipos da interface
 
@@ -19,6 +19,6 @@ App para Windows que controla o headset Alienware AW Pro: ANC, microfone, bateri
 Requer .NET 10 SDK e Visual Studio 2022 Build Tools (C++).
 
 ```bash
-engine\build.cmd
+m274\build.cmd
 dotnet build UFO.slnx -c Release
 ```

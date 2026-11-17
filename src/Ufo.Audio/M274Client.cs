@@ -4,15 +4,15 @@ using Microsoft.Win32;
 namespace Ufo.Audio;
 
 /// <summary>What the engine reports back while audio flows. Spectrum is 32 log bands (20 Hz–20 kHz) in dBFS.</summary>
-public sealed record EngineMeters(uint Blocks, float PeakLeft, float PeakRight, float LimiterGain, float HeadroomDb, float SampleRate, uint LatencyFrames, float[] Spectrum);
+public sealed record M274Meters(uint Blocks, float PeakLeft, float PeakRight, float LimiterGain, float HeadroomDb, float SampleRate, uint LatencyFrames, float[] Spectrum);
 
 /// <summary>
-/// Talks to the M274 (engine/apo/UfoApo.cpp) through files both sides memory-map in
-/// C:\ProgramData\UFO; the byte layouts mirror engine/apo/ipc.h. Settings are written as a seqlock
+/// Talks to the M274 (m274/apo/M274Apo.cpp) through files both sides memory-map in
+/// C:\ProgramData\UFO; the byte layouts mirror m274/apo/ipc.h. Settings are written as a seqlock
 /// (sequence odd while writing, even when complete), so the audio thread never sees half an update,
 /// and because they are files the engine finds the last settings again after a restart.
 /// </summary>
-public sealed class EngineClient : IDisposable
+public sealed class M274Client : IDisposable
 {
     public const string DataDirectory = @"C:\ProgramData\UFO";
     public const string RenderClsid = "{7C1F2D3A-5B6E-4A91-9C0D-55464F454E01}";
@@ -116,12 +116,12 @@ public sealed class EngineClient : IDisposable
     }
 
     /// <summary>Latest output meters, or null when the engine has never run.</summary>
-    public EngineMeters? ReadMeters() => ReadMeters("engine-meters.bin");
+    public M274Meters? ReadMeters() => ReadMeters("engine-meters.bin");
 
     /// <summary>Latest microphone meters, or null when the microphone engine has never run.</summary>
-    public EngineMeters? ReadMicrophoneMeters() => ReadMeters("mic-meters.bin");
+    public M274Meters? ReadMicrophoneMeters() => ReadMeters("mic-meters.bin");
 
-    private static EngineMeters? ReadMeters(string fileName)
+    private static M274Meters? ReadMeters(string fileName)
     {
         try
         {
@@ -133,7 +133,7 @@ public sealed class EngineClient : IDisposable
             }
             float[] spectrum = new float[SpectrumBands];
             Buffer.BlockCopy(data, 40, spectrum, 0, SpectrumBands * 4);
-            return new EngineMeters(
+            return new M274Meters(
                 BitConverter.ToUInt32(data, 4), BitConverter.ToSingle(data, 8), BitConverter.ToSingle(data, 12),
                 BitConverter.ToSingle(data, 16), BitConverter.ToSingle(data, 20), BitConverter.ToSingle(data, 24),
                 BitConverter.ToUInt32(data, 32), spectrum);

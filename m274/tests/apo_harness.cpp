@@ -1,6 +1,6 @@
-// Loads UfoApo.dll the way audiodg does (COM class factory, lock, process) without touching the
+// Loads M274.dll the way audiodg does (COM class factory, lock, process) without touching the
 // system: proves the object works end to end, including reading settings from a mapped file.
-// Usage: apo_harness.exe <path to UfoApo.dll>
+// Usage: apo_harness.exe <path to M274.dll>
 #include <windows.h>
 
 #include <audioenginebaseapo.h>
@@ -50,14 +50,14 @@ int wmain(int argc, wchar_t** argv) {
 
     // Settings file: one +6 dB band at 1 kHz, limiter off, so levels are easy to predict.
     CreateDirectoryW(L"C:\\ProgramData\\UFO", nullptr);
-    ufo::ipc::ParamsFile params{};
-    params.magic = ufo::ipc::kMagic;
+    m274::ipc::ParamsFile params{};
+    params.magic = m274::ipc::kMagic;
     params.sequence = 2;
     params.params.bandCount = 1;
     params.params.limiterEnabled = 0;
-    params.params.bands[0] = {ufo::BandType::Peak, 1000, 6, 1.41f};
+    params.params.bands[0] = {m274::BandType::Peak, 1000, 6, 1.41f};
     // Opened shared and written in place: the app may have this file mapped while the test runs.
-    HANDLE file = CreateFileW(ufo::ipc::kRenderParamsPath, GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_ALWAYS, 0, nullptr);
+    HANDLE file = CreateFileW(m274::ipc::kRenderParamsPath, GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_ALWAYS, 0, nullptr);
     expect(file != INVALID_HANDLE_VALUE, "can write the settings file");
     DWORD written = 0;
     WriteFile(file, &params, sizeof(params), &written, nullptr);
@@ -140,13 +140,13 @@ int wmain(int argc, wchar_t** argv) {
     expect(std::fabs(at100 + 6.0) < 0.15, "rest of the spectrum sits at the headroom level");
 
     // Meters prove the engine saw the settings and is counting blocks.
-    HANDLE meters = CreateFileW(ufo::ipc::kRenderMetersPath, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, 0, nullptr);
+    HANDLE meters = CreateFileW(m274::ipc::kRenderMetersPath, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, 0, nullptr);
     expect(meters != INVALID_HANDLE_VALUE, "meters file exists");
-    ufo::ipc::MetersFile seen{};
+    m274::ipc::MetersFile seen{};
     DWORD read = 0;
     ReadFile(meters, &seen, sizeof(seen), &read, nullptr);
     CloseHandle(meters);
-    expect(seen.magic == ufo::ipc::kMagic && seen.blocks == 80 && seen.paramsSequence == 2, "meters report blocks and applied settings");
+    expect(seen.magic == m274::ipc::kMagic && seen.blocks == 80 && seen.paramsSequence == 2, "meters report blocks and applied settings");
     expect(std::fabs(seen.headroomDb + 6.0f) < 0.05f, "meters report the headroom");
 
     expect(SUCCEEDED(config->UnlockForProcess()), "unlock");

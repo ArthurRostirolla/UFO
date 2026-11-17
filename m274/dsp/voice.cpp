@@ -4,7 +4,7 @@
 #include <cmath>
 #include <numbers>
 
-namespace ufo {
+namespace m274 {
 
 namespace {
 double unit(float value) { return std::clamp(static_cast<double>(value), 0.0, 1.0); }
@@ -168,4 +168,4 @@ void VoiceChain::process(float* samples, std::size_t frames, std::size_t channel
     if (std::abs(highPassState_.z2) < 1e-30) highPassState_.z2 = 0;
 }
 
-}  // namespace ufo
+}  // namespace m274
