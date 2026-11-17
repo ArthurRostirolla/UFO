@@ -14,7 +14,7 @@ namespace Ufo;
 /// <summary>
 /// Equalizer screen: sound profiles, presets, a parametric curve edited by dragging points over a
 /// live spectrum, and the ten simple sliders when the curve is the plain graphic one.
-/// Every change goes to the UFO Engine at once; "Salvar" decides what is kept.
+/// Every change goes to the M274 at once; "Salvar" decides what is kept.
 /// </summary>
 public partial class MainWindow
 {

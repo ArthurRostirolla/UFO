@@ -325,7 +325,7 @@
                                 </StackPanel>
                             </Border>
                         </Grid>
-                        <!-- Voice processing done by the UFO Engine on the PC (rows generated in MainWindow.Voice.cs).
+                        <!-- Voice processing done by the M274 on the PC (rows generated in MainWindow.Voice.cs).
                              Lives outside the headset-only groups: it works on what Windows receives. -->
                         <Border Style="{StaticResource Section}" IsEnabled="True">
                             <StackPanel>

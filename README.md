@@ -2,7 +2,7 @@
 
 # UFO
 
-App para Windows que controla o headset Alienware AW Pro: ANC, microfone, bateria, equalizador e perfis. Tem também o UFO Engine, um efeito de áudio (APO) próprio que processa a saída e o microfone.
+App para Windows que controla o headset Alienware AW Pro: ANC, microfone, bateria, equalizador e perfis. Tem também o M274, motor de áudio (APO) próprio que processa a saída e o microfone.
 
 ## Estrutura
 

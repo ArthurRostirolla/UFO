@@ -7,7 +7,7 @@ using Ufo.Audio;
 namespace Ufo;
 
 /// <summary>
-/// Voice processing done by the UFO Engine on what Windows receives from the microphone:
+/// Voice processing done by the M274 on what Windows receives from the microphone:
 /// the chain's amounts, an honest note about the link's sample rate, and a record-and-listen test.
 /// </summary>
 public partial class MainWindow

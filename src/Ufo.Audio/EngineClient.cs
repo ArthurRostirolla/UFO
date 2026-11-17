@@ -7,7 +7,7 @@ namespace Ufo.Audio;
 public sealed record EngineMeters(uint Blocks, float PeakLeft, float PeakRight, float LimiterGain, float HeadroomDb, float SampleRate, uint LatencyFrames, float[] Spectrum);
 
 /// <summary>
-/// Talks to the UFO Engine (engine/apo/UfoApo.cpp) through files both sides memory-map in
+/// Talks to the M274 (engine/apo/UfoApo.cpp) through files both sides memory-map in
 /// C:\ProgramData\UFO; the byte layouts mirror engine/apo/ipc.h. Settings are written as a seqlock
 /// (sequence odd while writing, even when complete), so the audio thread never sees half an update,
 /// and because they are files the engine finds the last settings again after a restart.

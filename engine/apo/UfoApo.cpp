@@ -1,4 +1,4 @@
-// UFO Engine: the audio processing object Windows loads into audiodg.exe for the headset endpoints.
+// M274: the audio processing object Windows loads into audiodg.exe for the headset endpoints.
 // One class, two CLSIDs: the render one reads engine.bin, the capture one reads mic.bin.
 //
 // Safety rules for everything on the audio thread (APOProcess): no allocation, no locks, no I/O
@@ -74,8 +74,8 @@ APO_REG_PROPERTIES makeRegProperties(const CLSID& clsid, const wchar_t* name) {
     return p;
 }
 
-const APO_REG_PROPERTIES kRenderProps = makeRegProperties(kRenderClsid, L"UFO Engine");
-const APO_REG_PROPERTIES kCaptureProps = makeRegProperties(kCaptureClsid, L"UFO Engine (microfone)");
+const APO_REG_PROPERTIES kRenderProps = makeRegProperties(kRenderClsid, L"M274");
+const APO_REG_PROPERTIES kCaptureProps = makeRegProperties(kCaptureClsid, L"M274 (microfone)");
 
 /// A file mapped into memory; stays null (and the engine passes audio through) if it can't open.
 struct MappedFile {

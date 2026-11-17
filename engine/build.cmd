@@ -1,5 +1,5 @@
 @echo off
-rem Builds the UFO Engine with the Visual Studio 2022 Build Tools and runs its tests.
+rem Builds the M274 with the Visual Studio 2022 Build Tools and runs its tests.
 rem Output goes to engine\build; the app picks UfoApo.dll up from there.
 setlocal
 call "%ProgramFiles(x86)%\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat" >nul 2>nul

@@ -8,7 +8,7 @@ using Ufo.Audio;
 namespace Ufo;
 
 /// <summary>
-/// UFO Engine controls: install/remove (through the elevated ufo-enginectl, so every system change
+/// M274 controls: install/remove (through the elevated ufo-enginectl, so every system change
 /// goes through a UAC prompt the user approves) and a live readout proving the engine is processing.
 /// </summary>
 public partial class MainWindow

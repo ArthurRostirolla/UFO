@@ -1,4 +1,4 @@
-// Numeric checks for the UFO engine DSP. Any failure prints the reason and exits non-zero.
+// Numeric checks for the M274 DSP. Any failure prints the reason and exits non-zero.
 #include <chrono>
 #include <cmath>
 #include <complex>

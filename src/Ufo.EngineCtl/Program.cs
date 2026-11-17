@@ -4,7 +4,7 @@ using Microsoft.Win32;
 
 // ufo-enginectl install | remove
 //
-// Installs or removes the UFO Engine for the AW Pro headset outputs. Runs elevated (UAC), started by
+// Installs or removes the M274 for the AW Pro headset outputs. Runs elevated (UAC), started by
 // the app when the user clicks the button. Everything it changes is recorded first in
 // C:\ProgramData\UFO\engine-backup.json, and "remove" puts each value back exactly as it was.
 //

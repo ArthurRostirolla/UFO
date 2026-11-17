@@ -28,7 +28,7 @@
     <Using Remove="System.Drawing" />
   </ItemGroup>
 
-  <!-- UFO Engine files travel in an "engine" folder beside the app: the native DLL (built from
+  <!-- M274 files travel in an "engine" folder beside the app: the native DLL (built from
        C:\UFO\engine) and the elevated installer. -->
   <ItemGroup>
     <None Include="..\..\engine\build\UfoApo.dll" Link="engine\UfoApo.dll" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\..\engine\build\UfoApo.dll')" />

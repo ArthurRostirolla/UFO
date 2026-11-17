@@ -6,7 +6,7 @@ namespace Ufo.Audio;
 /// <summary>
 /// Windows-side audio of the headset (through WASAPI): its volume for loudness compensation, test
 /// tones for the ear calibration, and a record-and-play microphone check. Everything here goes
-/// through the normal Windows audio path, so it is processed by the UFO Engine like any other app.
+/// through the normal Windows audio path, so it is processed by the M274 like any other app.
 /// </summary>
 public sealed class HeadsetAudio : IDisposable
 {
