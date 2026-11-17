@@ -26,11 +26,21 @@ dotnet build UFO.slnx -c Release
 
 ## Clips
 
-A lua **clips** guarda os últimos momentos da tela e do som (15 s a 10 min) e os transforma em MP4 por atalho global, ao gritar no microfone ou por gravação manual. Os clips ficam em `Vídeos\UFO\<jogo>`.
+A lua **clips** guarda os últimos momentos da tela e do som (15 s a 10 min) e os transforma em MP4 por atalho global, ao rir ou gritar no microfone, ou por gravação manual. Os clips ficam em `Vídeos\UFO\<jogo>`.
 
 A captura é feita por um `ffmpeg` filho, toda na placa de vídeo (Desktop Duplication + encoder de hardware), em segmentos de 1 s numa pasta temporária; salvar um clip só junta os últimos segmentos, sem recodificar.
 
 O `ffmpeg` (8 ou mais novo, com `ddagrab`) é procurado em `ffmpeg\ffmpeg.exe` ao lado do app e, na falta, no `PATH`. Para empacotar, coloque o executável em `tools\ffmpeg\ffmpeg.exe` antes do build.
+
+A risada é reconhecida no próprio computador pelo YAMNet (classificador de sons do Google). O modelo não fica no git: gere `tools\yamnet\yamnet.onnx` uma vez, a partir do modelo oficial, antes do build:
+
+```bash
+curl -L -o yamnet.tar.gz "https://tfhub.dev/google/yamnet/1?tf-hub-format=compressed"
+mkdir yamnet-model && tar -xzf yamnet.tar.gz -C yamnet-model
+pip install tensorflow==2.16.2 tf2onnx==1.16.1 numpy==1.26.4
+python -m tf2onnx.convert --saved-model yamnet-model --output tools/yamnet/yamnet.onnx --opset 15
+dotnet run --project tests/Ufo.Device.Check -- --laughter tools/yamnet/yamnet.onnx
+```
 
 Teste ao vivo do gravador (grava a tela por 8 s e salva 5 s):
 

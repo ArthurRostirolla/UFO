@@ -161,3 +161,23 @@ if (args is ["--clip", string clipOutput])
     Ufo.Clips.SavedClip? saved = await recorder.SaveClipAsync(5, clipOutput);
     Console.WriteLine(saved is null ? "No clip." : $"Saved {saved.Seconds} s to {saved.Path}; mic level {Ufo.Clips.ClipTriggers.LevelDb(audio.LastMicrophoneSecond(), 1):0} dBFS");
 }
+
+// Laughter model, when it has been built into tools\yamnet (see README): dotnet run --project tests/Ufo.Device.Check -- --laughter <yamnet.onnx> [sound.wav 16 kHz mono 16-bit]
+if (args is ["--laughter", string modelPath, ..])
+{
+    using Ufo.Clips.LaughterDetector detector = Ufo.Clips.LaughterDetector.TryLoad(modelPath) ?? throw new Exception("model not found");
+    Expect(detector.Score(new float[16000]) < 0.01, true, "silence is not laughter");
+    float[] tone = [.. Enumerable.Range(0, 16000).Select(i => 0.5f * MathF.Sin(i * 2 * MathF.PI * 1000 / 16000))];
+    Expect(detector.Score(tone) < 0.01, true, "a beep is not laughter");
+    Console.WriteLine("Laughter model check passed.");
+    if (args.Length > 2)
+    {
+        byte[] wave = File.ReadAllBytes(args[2]);
+        short[] samples = new short[(wave.Length - 44) / 2];
+        Buffer.BlockCopy(wave, 44, samples, 0, samples.Length * 2);
+        for (int at = 0; at + 16000 <= samples.Length; at += 8000)
+        {
+            Console.WriteLine($"{at / 16000.0:0.0} s: {detector.Score([.. samples.Skip(at).Take(16000).Select(sample => sample / 32768f)]):0.00}");
+        }
+    }
+}

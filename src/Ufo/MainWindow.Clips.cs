@@ -28,6 +28,9 @@ public partial class MainWindow
     private readonly List<Action> clipRefreshers = [];
     private readonly Stopwatch clipClock = Stopwatch.StartNew();
     private readonly TriggerGate shoutGate = new(checksInARow: 1, ClipTriggers.Cooldown);
+    private readonly TriggerGate laughterGate = new(checksInARow: 2, ClipTriggers.Cooldown); // a full second of laughing
+    private LaughterDetector? laughter;
+    private bool isHearingLaughter;
     private ClipRecorder clipRecorder = null!;
     private ClipOverlay? clipOverlay;
     private string? clipGame;
@@ -52,6 +55,7 @@ public partial class MainWindow
     private void InitializeClips()
     {
         clipRecorder = new ClipRecorder(clipAudio);
+        laughter = LaughterDetector.TryLoad(LaughterDetector.DefaultPath);
         BuildClipPanel();
         ShowClipRows();
         clipRestart.Tick += (_, _) =>
@@ -69,6 +73,7 @@ public partial class MainWindow
         clipWatch.Stop();
         clipRecorder.Dispose();
         clipAudio.Dispose();
+        laughter?.Dispose();
         clipOverlay?.Close();
     }
 
@@ -165,6 +170,34 @@ public partial class MainWindow
         if (Clips.ClipOnShout && shoutGate.Update(ClipTriggers.LevelDb(heard, 0.5), Clips.ShoutDb, clipClock.Elapsed))
         {
             _ = SaveClipAfterTriggerAsync("grito");
+        }
+        if (Clips.ClipOnLaughter && laughter is not null && !isHearingLaughter)
+        {
+            _ = HearLaughterAsync(heard);
+        }
+    }
+
+    /// <summary>Asks the model about the last second of the microphone, off the UI thread.</summary>
+    private async Task HearLaughterAsync(float[] heard)
+    {
+        isHearingLaughter = true;
+        try
+        {
+            LaughterDetector detector = laughter!;
+            double score = await Task.Run(() => detector.Score(heard));
+            // Sensitivity 10–90% asks for a score of 0.9 down to 0.1.
+            if (laughterGate.Update(score, 1 - Clips.LaughterSensitivity, clipClock.Elapsed) && clipClock.Elapsed >= autoClipQuietUntil)
+            {
+                _ = SaveClipAfterTriggerAsync("risada");
+            }
+        }
+        catch (Microsoft.ML.OnnxRuntime.OnnxRuntimeException)
+        {
+            // one bad inference is not worth a message; the next half second tries again
+        }
+        finally
+        {
+            isHearingLaughter = false;
         }
     }
 
@@ -449,6 +482,23 @@ public partial class MainWindow
             (settings, modifiers, key) => settings with { RecordModifiers = modifiers, RecordKey = key });
 
         Panel triggers = AddClipSection("Clip automático");
+        if (laughter is null)
+        {
+            triggers.Children.Add(new TextBlock
+            {
+                Style = (Style)FindResource("Hint"), FontSize = 13, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 8),
+                Text = "O clip por risada precisa do modelo em yamnet\\yamnet.onnx ao lado do UFO (veja o README).",
+            });
+        }
+        else
+        {
+            AddSwitchRow(triggers, clipRefreshers, "Ao rir no microfone", () => Clips.ClipOnLaughter,
+                isOn => ChangeClips(settings => settings with { ClipOnLaughter = isOn }),
+                "Um modelo de IA roda no próprio computador e reconhece risada na sua voz. Nada sai da máquina.");
+            AddSliderRow(triggers, clipRefreshers, "Sensibilidade da risada", 0.1, 0.9, isPercent: true, () => Clips.LaughterSensitivity,
+                sensitivity => ChangeClips(settings => settings with { LaughterSensitivity = sensitivity }),
+                "Mais alta guarda risadinhas; mais baixa, só gargalhadas claras.");
+        }
         AddSwitchRow(triggers, clipRefreshers, "Ao gritar no microfone", () => Clips.ClipOnShout,
             isOn => ChangeClips(settings => settings with { ClipOnShout = isOn }));
         AddSliderRow(triggers, clipRefreshers, "Volume do grito", -30, 0, isPercent: false, () => Clips.ShoutDb,

@@ -41,3 +41,52 @@ public static class ClipTriggers
         return 10 * Math.Log10(Math.Max(sum / Math.Max(tail.Length, 1), 1e-12));
     }
 }
+
+/// <summary>
+/// Hears laughter with YAMNet (Google's AudioSet classifier, converted to ONNX; runs on the CPU in a
+/// few milliseconds). The model takes 16 kHz mono sound and scores 521 kinds of sound per ~1 s frame.
+/// </summary>
+public sealed class LaughterDetector : IDisposable
+{
+    // AudioSet classes 13–18: Laughter, Baby laughter, Giggle, Snicker, Belly laugh, Chuckle.
+    private const int FirstLaughClass = 13, LastLaughClass = 18;
+
+    private readonly Microsoft.ML.OnnxRuntime.InferenceSession session;
+
+    private LaughterDetector(string modelPath) => session = new Microsoft.ML.OnnxRuntime.InferenceSession(modelPath);
+
+    /// <summary>The model that travels beside the app.</summary>
+    public static string DefaultPath => Path.Combine(AppContext.BaseDirectory, "yamnet", "yamnet.onnx");
+
+    /// <summary>Null when the model file is missing or unreadable: laughter clips are simply unavailable.</summary>
+    public static LaughterDetector? TryLoad(string modelPath)
+    {
+        try
+        {
+            return File.Exists(modelPath) ? new LaughterDetector(modelPath) : null;
+        }
+        catch (Microsoft.ML.OnnxRuntime.OnnxRuntimeException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>How sure the model is that there is laughter in the sound, 0 to 1 (its best frame and best laugh class).</summary>
+    public double Score(float[] mono16k)
+    {
+        var waveform = new Microsoft.ML.OnnxRuntime.Tensors.DenseTensor<float>(mono16k, [mono16k.Length]);
+        using var results = session.Run([Microsoft.ML.OnnxRuntime.NamedOnnxValue.CreateFromTensor("waveform", waveform)]);
+        var scores = results[0].AsTensor<float>();
+        double best = 0;
+        for (int frame = 0; frame < scores.Dimensions[0]; frame++)
+        {
+            for (int kind = FirstLaughClass; kind <= LastLaughClass; kind++)
+            {
+                best = Math.Max(best, scores[frame, kind]);
+            }
+        }
+        return best;
+    }
+
+    public void Dispose() => session.Dispose();
+}

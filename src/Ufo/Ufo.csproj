@@ -57,6 +57,8 @@
        (not in git); without it the one on PATH is used. -->
   <ItemGroup>
     <None Include="..\..\tools\ffmpeg\ffmpeg.exe" Link="ffmpeg\ffmpeg.exe" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\..\tools\ffmpeg\ffmpeg.exe')" />
+    <!-- Laughter model (YAMNet converted to ONNX, see README); without it the laughter trigger is hidden. -->
+    <None Include="..\..\tools\yamnet\yamnet.onnx" Link="yamnet\yamnet.onnx" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\..\tools\yamnet\yamnet.onnx')" />
   </ItemGroup>
 
 </Project>
