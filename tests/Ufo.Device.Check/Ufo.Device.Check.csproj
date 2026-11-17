@@ -10,6 +10,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Ufo.Device\Ufo.Device.csproj" />
     <ProjectReference Include="..\..\src\Ufo.Audio\Ufo.Audio.csproj" />
+    <ProjectReference Include="..\..\src\Ufo.Clips\Ufo.Clips.csproj" />
   </ItemGroup>
 
 </Project>

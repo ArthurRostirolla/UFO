@@ -50,6 +50,13 @@
   <ItemGroup>
     <ProjectReference Include="..\Ufo.Device\Ufo.Device.csproj" />
     <ProjectReference Include="..\Ufo.Audio\Ufo.Audio.csproj" />
+    <ProjectReference Include="..\Ufo.Clips\Ufo.Clips.csproj" />
+  </ItemGroup>
+
+  <!-- Clips: ffmpeg travels in an "ffmpeg" folder beside the app when tools\ffmpeg\ffmpeg.exe exists
+       (not in git); without it the one on PATH is used. -->
+  <ItemGroup>
+    <None Include="..\..\tools\ffmpeg\ffmpeg.exe" Link="ffmpeg\ffmpeg.exe" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\..\tools\ffmpeg\ffmpeg.exe')" />
   </ItemGroup>
 
 </Project>

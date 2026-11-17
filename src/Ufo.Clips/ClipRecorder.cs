@@ -1,0 +1,332 @@
+using System.ComponentModel;
+using System.Diagnostics;
+using System.Globalization;
+using System.Runtime.InteropServices;
+
+namespace Ufo.Clips;
+
+/// <summary>A way of getting screen frames into a hardware encoder that works on this machine.</summary>
+public sealed record CapturePipeline(string Filter, string Encoder);
+
+/// <summary>
+/// The replay buffer. One ffmpeg child captures the screen on the GPU (Desktop Duplication), encodes
+/// it with the hardware encoder and writes one-second MPEG-TS segments, sound included, into a
+/// scratch folder; segments older than the retroactive time are deleted. Saving a clip joins the
+/// last N segments into an MP4 without re-encoding.
+/// </summary>
+public sealed class ClipRecorder : IDisposable
+{
+    private static readonly string BufferFolder = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "UFO", "clip-buffer");
+
+    private readonly ClipAudio audio;
+    private readonly Dictionary<string, CapturePipeline?> pipelines = [];
+    private readonly ChildProcessJob job = new();
+    private Process? ffmpeg;
+    private Timer? pruning;
+    private ClipSettings settings = new();
+    private int? recordingFrom;
+
+    public ClipRecorder(ClipAudio audio) => this.audio = audio;
+
+    public bool IsRunning => ffmpeg is { HasExited: false };
+
+    public bool IsRecording => recordingFrom is not null;
+
+    /// <summary>"h264_qsv · 1920×1080 · 60 fps" for the status line, once running.</summary>
+    public string Description { get; private set; } = "";
+
+    /// <summary>The bundled ffmpeg beside the app, or the one on PATH.</summary>
+    public static string FfmpegPath
+    {
+        get
+        {
+            string bundled = Path.Combine(AppContext.BaseDirectory, "ffmpeg", "ffmpeg.exe");
+            return File.Exists(bundled) ? bundled : "ffmpeg";
+        }
+    }
+
+    /// <summary>
+    /// Starts (or restarts) the buffer. Slow the first time for a given codec: it tries the capture
+    /// pipelines until one encodes. Throws <see cref="InvalidOperationException"/> with a message for
+    /// the user when ffmpeg is missing or no pipeline works.
+    /// </summary>
+    public void Start(ClipSettings wanted, int monitorWidth, int monitorHeight)
+    {
+        Stop();
+        settings = wanted;
+        (int width, int height) = wanted.OutputSize(monitorWidth, monitorHeight);
+        bool isScaled = (width, height) != (monitorWidth, monitorHeight);
+        string key = $"{wanted.Codec}|{wanted.Monitor}|{wanted.FramesPerSecond}|{(isScaled ? $"{width}x{height}" : "")}";
+        if (!pipelines.TryGetValue(key, out CapturePipeline? pipeline))
+        {
+            pipeline = Candidates(wanted, isScaled ? (width, height) : null).FirstOrDefault(Works);
+            pipelines[key] = pipeline;
+        }
+        if (pipeline is null)
+        {
+            throw new InvalidOperationException("Nenhum encoder de vídeo desta máquina aceitou a captura da tela. Atualize o driver da placa de vídeo.");
+        }
+
+        Directory.CreateDirectory(BufferFolder);
+        foreach (string old in Directory.EnumerateFiles(BufferFolder))
+        {
+            File.Delete(old);
+        }
+        ffmpeg = Run(RecordArguments(wanted, pipeline, width, height, Path.Combine(BufferFolder, "seg%06d.ts")), hasInput: true);
+        job.Add(ffmpeg);
+        audio.RecordSystem = wanted.RecordSystem;
+        audio.RecordMicrophone = wanted.RecordMicrophone;
+        audio.SystemVolume = wanted.SystemVolume;
+        audio.MicrophoneVolume = wanted.MicrophoneVolume;
+        audio.Start(ffmpeg.StandardInput.BaseStream);
+        pruning = new Timer(_ => Prune(), null, 2000, 2000);
+        Description = $"{pipeline.Encoder} · {width}×{height} · {wanted.FramesPerSecond} fps";
+    }
+
+    public void Stop()
+    {
+        pruning?.Dispose();
+        pruning = null;
+        recordingFrom = null;
+        audio.Stop();
+        if (ffmpeg is { } process)
+        {
+            ffmpeg = null;
+            try
+            {
+                if (!process.HasExited)
+                {
+                    process.Kill(); // MPEG-TS segments survive being cut off
+                    process.WaitForExit(2000);
+                }
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or Win32Exception)
+            {
+                // already gone
+            }
+            process.Dispose();
+        }
+    }
+
+    public void Dispose()
+    {
+        Stop();
+        job.Dispose();
+    }
+
+    /// <summary>Starts a manual recording: from now on nothing is pruned until <see cref="StopRecordingAsync"/>.</summary>
+    public void StartRecording() => recordingFrom = Segments().LastOrDefault().Index;
+
+    /// <summary>Ends the manual recording and saves it; null when nothing was captured.</summary>
+    public async Task<SavedClip?> StopRecordingAsync(string outputPath)
+    {
+        if (recordingFrom is not { } from)
+        {
+            return null;
+        }
+        SavedClip? clip = await SaveAsync(outputPath, segments => segments.Where(segment => segment.Index >= from));
+        recordingFrom = null;
+        return clip;
+    }
+
+    /// <summary>Saves the last <paramref name="seconds"/> seconds; null when the buffer is empty.</summary>
+    public Task<SavedClip?> SaveClipAsync(int seconds, string outputPath) =>
+        SaveAsync(outputPath, segments => LastSegments(segments, seconds));
+
+    /// <summary>The newest <paramref name="seconds"/> finished segments (each lasts one second).</summary>
+    public static IEnumerable<T> LastSegments<T>(IReadOnlyList<T> finished, int seconds) =>
+        finished.Skip(Math.Max(0, finished.Count - seconds));
+
+    private async Task<SavedClip?> SaveAsync(string outputPath, Func<IReadOnlyList<(int Index, string Path)>, IEnumerable<(int Index, string Path)>> choose)
+    {
+        if (!IsRunning)
+        {
+            return null;
+        }
+        await Task.Delay(1100); // lets the segment being written close, so the clip reaches the moment it was asked for
+        List<(int Index, string Path)> all = Segments();
+        // The newest file is still being written.
+        List<(int Index, string Path)> chosen = [.. choose(all.GetRange(0, Math.Max(0, all.Count - 1)))];
+        if (chosen.Count == 0)
+        {
+            return null;
+        }
+        Directory.CreateDirectory(Path.GetDirectoryName(outputPath) ?? ".");
+        string list = Path.Combine(BufferFolder, $"clip-{Guid.NewGuid():N}.txt");
+        await File.WriteAllLinesAsync(list, chosen.Select(segment => $"file '{segment.Path.Replace('\\', '/')}'"));
+        try
+        {
+            using Process join = Run(["-f", "concat", "-safe", "0", "-i", list, "-c", "copy", "-movflags", "+faststart", outputPath], hasInput: false);
+            await join.WaitForExitAsync();
+            return join.ExitCode == 0 && File.Exists(outputPath) ? new SavedClip(outputPath, chosen.Count) : null;
+        }
+        finally
+        {
+            File.Delete(list);
+        }
+    }
+
+    private static List<(int Index, string Path)> Segments() =>
+        Directory.Exists(BufferFolder)
+            ? [.. Directory.EnumerateFiles(BufferFolder, "seg*.ts")
+                .Select(path => (Index: int.Parse(Path.GetFileNameWithoutExtension(path).AsSpan(3), CultureInfo.InvariantCulture), Path: path))
+                .OrderBy(segment => segment.Index)]
+            : [];
+
+    private void Prune()
+    {
+        try
+        {
+            List<(int Index, string Path)> all = Segments();
+            if (all.Count == 0)
+            {
+                return;
+            }
+            // Five spare seconds, so a clip being joined never loses its first segment.
+            int keepFrom = Math.Min(all[^1].Index - settings.RetroSeconds - 5, recordingFrom ?? int.MaxValue);
+            foreach ((int index, string path) in all)
+            {
+                if (index < keepFrom)
+                {
+                    File.Delete(path);
+                }
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // in use by a clip being saved; gone at the next pass
+        }
+    }
+
+    /// <summary>
+    /// Pipelines to try, best first: for each vendor, the path that keeps every frame on the GPU; then
+    /// the same encoders fed through system memory (the screen and the encoder can sit on different
+    /// GPUs on laptops, and not every driver scales on the GPU).
+    /// </summary>
+    public static IEnumerable<CapturePipeline> Candidates(ClipSettings settings, (int Width, int Height)? scaleTo)
+    {
+        string grab = $"ddagrab=output_idx={settings.Monitor}:framerate={settings.FramesPerSecond}";
+        string[] vendors = ["nvenc", "amf", "qsv", "mf"];
+        foreach (string vendor in vendors)
+        {
+            string filter = (vendor, scaleTo) switch
+            {
+                ("qsv", null) => $"{grab},hwmap=derive_device=qsv,format=qsv",
+                ("qsv", { } size) => $"{grab},hwmap=derive_device=qsv,format=qsv,vpp_qsv=w={size.Width}:h={size.Height}",
+                (_, null) => grab,
+                (_, { } size) => $"{grab},scale_d3d11=width={size.Width}:height={size.Height}:format=nv12",
+            };
+            yield return new CapturePipeline(filter, $"{settings.Codec}_{vendor}");
+        }
+        string scale = scaleTo is { } to ? $"scale={to.Width}:{to.Height}:flags=fast_bilinear," : "";
+        foreach (string vendor in vendors)
+        {
+            yield return new CapturePipeline($"{grab},hwdownload,format=bgra,{scale}format=nv12", $"{settings.Codec}_{vendor}");
+        }
+    }
+
+    private static bool Works(CapturePipeline pipeline)
+    {
+        try
+        {
+            using Process probe = Run(["-f", "lavfi", "-i", pipeline.Filter, "-frames:v", "5", "-c:v", pipeline.Encoder, "-f", "null", "-"], hasInput: false);
+            if (!probe.WaitForExit(8000))
+            {
+                probe.Kill();
+                return false;
+            }
+            return probe.ExitCode == 0;
+        }
+        catch (Win32Exception)
+        {
+            throw new InvalidOperationException("O ffmpeg não foi encontrado. Ele deve estar na pasta ffmpeg ao lado do UFO.");
+        }
+    }
+
+    public static string[] RecordArguments(ClipSettings settings, CapturePipeline pipeline, int width, int height, string segmentPattern)
+    {
+        int bitrate = settings.BitrateKbps(width, height);
+        string fps = settings.FramesPerSecond.ToString(CultureInfo.InvariantCulture);
+        return
+        [
+            "-thread_queue_size", "1024",
+            // Positive delays the sound, negative the picture.
+            "-itsoffset", (settings.SyncMilliseconds / 1000.0).ToString("0.###", CultureInfo.InvariantCulture),
+            "-f", "f32le", "-ar", ClipAudio.SampleRate.ToString(CultureInfo.InvariantCulture), "-ac", "2", "-i", "pipe:0",
+            "-f", "lavfi", "-i", pipeline.Filter,
+            "-map", "1:v", "-map", "0:a",
+            "-c:v", pipeline.Encoder, "-b:v", $"{bitrate}k", "-maxrate", $"{bitrate * 3 / 2}k", "-bufsize", $"{bitrate * 2}k",
+            // A keyframe every second and no B-frames: every segment starts cleanly and can be cut at.
+            "-g", fps, "-bf", "0",
+            "-c:a", "aac", "-b:a", "160k",
+            "-f", "segment", "-segment_time", "1", "-segment_format", "mpegts", segmentPattern,
+        ];
+    }
+
+    internal static Process Run(IEnumerable<string> arguments, bool hasInput)
+    {
+        var start = new ProcessStartInfo(FfmpegPath)
+        {
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardInput = true, // also when unused: ffmpeg must not read the app's console
+        };
+        foreach (string argument in (string[])["-hide_banner", "-loglevel", "error", "-y", .. hasInput ? [] : (string[])["-nostdin"], .. arguments])
+        {
+            start.ArgumentList.Add(argument);
+        }
+        return Process.Start(start) ?? throw new Win32Exception();
+    }
+}
+
+public sealed record SavedClip(string Path, int Seconds);
+
+/// <summary>A Windows job that kills its processes when the app ends, however it ends.</summary>
+internal sealed class ChildProcessJob : IDisposable
+{
+    private readonly nint handle = CreateJobObject(0, null);
+
+    public ChildProcessJob()
+    {
+        const int ExtendedLimitInformation = 9;
+        const uint KillOnJobClose = 0x2000;
+        var limits = new ExtendedLimits { Basic = { LimitFlags = KillOnJobClose } };
+        SetInformationJobObject(handle, ExtendedLimitInformation, ref limits, Marshal.SizeOf<ExtendedLimits>());
+    }
+
+    public void Add(Process process) => AssignProcessToJobObject(handle, process.Handle);
+
+    public void Dispose() => CloseHandle(handle);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct BasicLimits
+    {
+        public long PerProcessUserTimeLimit, PerJobUserTimeLimit;
+        public uint LimitFlags;
+        public nuint MinimumWorkingSetSize, MaximumWorkingSetSize;
+        public uint ActiveProcessLimit;
+        public nuint Affinity;
+        public uint PriorityClass, SchedulingClass;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct ExtendedLimits
+    {
+        public BasicLimits Basic;
+        public ulong ReadOperations, WriteOperations, OtherOperations, ReadTransfers, WriteTransfers, OtherTransfers;
+        public nuint ProcessMemoryLimit, JobMemoryLimit, PeakProcessMemoryUsed, PeakJobMemoryUsed;
+    }
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
+    private static extern nint CreateJobObject(nint attributes, string? name);
+
+    [DllImport("kernel32.dll")]
+    private static extern bool SetInformationJobObject(nint job, int infoClass, ref ExtendedLimits info, int length);
+
+    [DllImport("kernel32.dll")]
+    private static extern bool AssignProcessToJobObject(nint job, nint process);
+
+    [DllImport("kernel32.dll")]
+    private static extern bool CloseHandle(nint handle);
+}

@@ -99,3 +99,65 @@ Expect(bassFix.TrimDb, 1.5, "volume makes up for the headroom the boost costs");
 Expect(new SoundSettings(IsLoudnessOn: true).ExtraBands(-37).Max(band => band.Gain) <= 4, true, "loudness adds at most 4 dB");
 
 Console.WriteLine("Equalizer check passed.");
+
+// ── Clips ───────────────────────────────────────────────────────────────────────────────────────
+{
+    var clips = new Ufo.Clips.ClipSettings();
+    Expect(clips.OutputSize(2560, 1440), (2560, 1440), "native resolution by default");
+    Expect((clips with { Height = 1080 }).OutputSize(3440, 1440), (2580, 1080), "ultrawide keeps its shape, even width");
+    Expect((clips with { Height = 2160 }).OutputSize(1920, 1080), (1920, 1080), "never scales up");
+    Expect(clips.BitrateKbps(1920, 1080), 30000, "high quality at 1080p60");
+    Expect((clips with { Quality = 0, FramesPerSecond = 30 }).BitrateKbps(1280, 720) < 4000, true, "low 720p30 stays small");
+    Expect((clips with { Codec = "hevc" }).BitrateKbps(3840, 2160) > 30000, true, "4K needs more than 1080p even in HEVC");
+
+    Expect(string.Join(",", Ufo.Clips.ClipRecorder.LastSegments([1, 2, 3, 4, 5], 3)), "3,4,5", "last three seconds");
+    Expect(string.Join(",", Ufo.Clips.ClipRecorder.LastSegments([1, 2], 30)), "1,2", "short buffer gives what it has");
+
+    var first = Ufo.Clips.ClipRecorder.Candidates(clips, null).First();
+    Expect(first, new Ufo.Clips.CapturePipeline("ddagrab=output_idx=0:framerate=60", "h264_nvenc"), "GPU-only pipeline first");
+    Expect(Ufo.Clips.ClipRecorder.Candidates(clips, (1280, 720)).Count(pipeline => pipeline.Filter.Contains("1280")), 8, "every scaled pipeline scales");
+    string[] record = Ufo.Clips.ClipRecorder.RecordArguments(clips with { SyncMilliseconds = -40 }, first, 1920, 1080, "seg%06d.ts");
+    Expect(record[Array.IndexOf(record, "-itsoffset") + 1], "-0.04", "sync offset in seconds, invariant culture");
+    Expect(record[Array.IndexOf(record, "-g") + 1], "60", "a keyframe per second");
+
+    // Triggers: two checks in a row fire once, then stay quiet for the cooldown.
+    var gate = new Ufo.Clips.TriggerGate(checksInARow: 2, cooldown: TimeSpan.FromSeconds(30));
+    TimeSpan At(double seconds) => TimeSpan.FromSeconds(seconds);
+    Expect(gate.Update(0.9, 0.5, At(0)), false, "one high score is not enough");
+    Expect(gate.Update(0.2, 0.5, At(0.5)), false, "a dip resets the streak");
+    Expect(gate.Update(0.9, 0.5, At(1)), false, "streak restarts");
+    Expect(gate.Update(0.9, 0.5, At(1.5)), true, "two in a row fire");
+    Expect(gate.Update(0.9, 0.5, At(2)) || gate.Update(0.9, 0.5, At(2.5)), false, "quiet during the cooldown");
+    Expect(gate.Update(0.9, 0.5, At(40)) || gate.Update(0.9, 0.5, At(40.5)), true, "fires again after it");
+
+    float[] loud = [.. Enumerable.Range(0, 16000).Select(i => i < 8000 ? 0f : 0.5f * MathF.Sin(i * 0.3f))];
+    Expect(Math.Round(Ufo.Clips.ClipTriggers.LevelDb(loud, 0.5)), -9.0, "RMS of a half-scale sine over the last half second");
+    Expect(Ufo.Clips.ClipTriggers.LevelDb(new float[16000], 0.5) < -100, true, "silence");
+
+    // Resampler: 16 kHz up to 48 kHz triples the samples and keeps a ramp a ramp across blocks.
+    var resampler = new Ufo.Clips.Resampler(16000, 48000);
+    var resampled = new List<float>();
+    resampler.Process([0f, 3f, 6f], 1, resampled, isMono: true);
+    resampler.Process([9f, 12f, 15f], 1, resampled, isMono: true);
+    Expect(string.Join(",", resampled.Select(sample => Math.Round(sample, 3))), "0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15", "linear upsampling is continuous across blocks");
+
+    // Library: names, trigger tags and the space limit.
+    string clipPath = Ufo.Clips.ClipLibrary.NewPath("Elden: Ring?", "risada", new DateTime(2026, 11, 17, 21, 3, 12));
+    Expect(Path.GetFileName(clipPath), "Elden Ring 2026-11-17 21-03-12 risada.mp4", "clip file name");
+    Ufo.Clips.ClipFile File(string name, long bytes) => new(name, "Jogo", "atalho", DateTime.Now, bytes);
+    Expect(string.Join(",", Ufo.Clips.ClipLibrary.OverLimit([File("new", 40), File("mid", 40), File("old", 40)], 90).Select(clip => clip.Path)), "old", "oldest goes first, only as many as needed");
+
+    Console.WriteLine("Clips check passed.");
+}
+
+// Live smoke test of the replay buffer (needs a screen and ffmpeg): dotnet run --project tests/Ufo.Device.Check -- --clip <output.mp4>
+if (args is ["--clip", string clipOutput])
+{
+    using var audio = new Ufo.Clips.ClipAudio();
+    using var recorder = new Ufo.Clips.ClipRecorder(audio);
+    recorder.Start(new Ufo.Clips.ClipSettings(), 1920, 1080);
+    Console.WriteLine($"Recording: {recorder.Description}");
+    await Task.Delay(8000);
+    Ufo.Clips.SavedClip? saved = await recorder.SaveClipAsync(5, clipOutput);
+    Console.WriteLine(saved is null ? "No clip." : $"Saved {saved.Seconds} s to {saved.Path}; mic level {Ufo.Clips.ClipTriggers.LevelDb(audio.LastMicrophoneSecond(), 1):0} dBFS");
+}

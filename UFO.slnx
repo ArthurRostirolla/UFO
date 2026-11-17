@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/Ufo.Audio/Ufo.Audio.csproj" />
+    <Project Path="src/Ufo.Clips/Ufo.Clips.csproj" />
     <Project Path="src/Ufo.Device/Ufo.Device.csproj" />
     <Project Path="src/Ufo.M274Ctl/Ufo.M274Ctl.csproj" />
     <Project Path="src/Ufo/Ufo.csproj" />

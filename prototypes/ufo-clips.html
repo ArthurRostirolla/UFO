@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UFO · overlay de clips</title>
+<style>
+*{box-sizing:border-box}
+:root{--bg:#0B0B0C;--ink:#EDEDEA;--mu:#8E8E86;--line:#232322;--ac:#FF5A1F}
+html,body{margin:0;height:100%;font-family:"Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;color:var(--ink)}
+/* Stand-in for a game frame: the overlay has to read over anything. */
+body{background:linear-gradient(135deg,#27405a,#6b3a55 55%,#c9a15a)}
+.bar{position:fixed;left:16px;bottom:16px;display:flex;gap:8px}
+button{font:13px inherit;color:var(--ink);background:var(--bg);border:1px solid #3A3A36;border-radius:4px;height:36px;padding:0 14px;cursor:pointer}
+
+/* The overlay: one small plate in a corner. Saucer hovers on the left, drops its beam on the caption,
+   and the caption is "abducted" (rises and fades) as the plate leaves. */
+.toast{position:fixed;top:24px;right:24px;display:flex;align-items:center;gap:12px;padding:10px 16px 10px 12px;
+  background:var(--bg);border:1px solid var(--line);border-radius:8px;opacity:0;transform:translateY(-14px);pointer-events:none}
+.toast.show{animation:in .3s cubic-bezier(.23,1,.32,1) both,out .35s 2.6s cubic-bezier(.5,0,.75,0) both}
+.craft{position:relative;width:44px;height:34px}
+.craft svg{position:absolute;top:0;left:0;width:44px;animation:bob 1.4s ease-in-out infinite alternate}
+.beam{position:absolute;left:11px;top:17px;width:22px;height:17px;background:var(--ac);clip-path:polygon(32% 0,68% 0,100% 100%,0 100%);
+  transform-origin:top;transform:scaleY(0)}
+.show .beam{animation:beam .9s .25s cubic-bezier(.23,1,.32,1) both}
+.title{font-size:13px;font-weight:500}
+.meta{font:11px "Cascadia Mono",Consolas,monospace;color:var(--mu);margin-top:2px}
+.rec{position:fixed;top:24px;left:24px;width:8px;height:8px;border-radius:50%;background:var(--ac);animation:blink 2s step-end infinite}
+@keyframes in{to{opacity:1;transform:none}}
+@keyframes out{to{opacity:0;transform:translateY(-14px)}}
+@keyframes beam{0%{transform:scaleY(0)}35%,70%{transform:scaleY(1)}100%{transform:scaleY(0)}}
+@keyframes bob{to{transform:translateY(-3px)}}
+@keyframes blink{50%{opacity:.25}}
+@media (prefers-reduced-motion:reduce){.toast.show{animation:in 0s both,out 0s 2.6s both}.craft svg,.rec{animation:none}.show .beam{animation:none}}
+</style>
+</head>
+<body>
+<div class="rec" title="buffer ligado"></div>
+<div class="toast" id="toast">
+  <div class="craft">
+    <div class="beam"></div>
+    <svg viewBox="0 18 200 92"><clipPath id="lens"><path d="M14 70C52 38 148 38 186 70C150 106 50 106 14 70Z"/></clipPath>
+      <path d="M70 50a30 30 0 0 1 60 0" fill="#FF5A1F" stroke="#0B0B0C" stroke-width="7" stroke-linejoin="round"/>
+      <path d="M14 70C52 38 148 38 186 70C150 106 50 106 14 70Z" fill="#EDEDEA"/>
+      <path d="M14 70C52 38 148 38 186 70C150 106 50 106 14 70Z" fill="none" stroke="#0B0B0C" stroke-width="7" stroke-linejoin="round"/>
+      <circle cx="100" cy="78" r="4" fill="#FF5A1F"/><ellipse cx="100" cy="97" rx="28" ry="6.5" fill="#FF5A1F" stroke="#0B0B0C" stroke-width="7"/></svg>
+  </div>
+  <div><div class="title" id="title">clip salvo</div><div class="meta" id="meta">30 s · atalho</div></div>
+</div>
+<div class="bar">
+  <button data-t="clip salvo" data-m="30 s · atalho">Atalho</button>
+  <button data-t="clip salvo" data-m="30 s · risada">Risada</button>
+  <button data-t="clip salvo" data-m="30 s · grito">Grito</button>
+  <button data-t="gravando" data-m="Ctrl+Alt+R para parar">Gravação</button>
+</div>
+<script>
+const toast = document.getElementById('toast');
+document.querySelectorAll('button').forEach(b => b.onclick = () => {
+  title.textContent = b.dataset.t; meta.textContent = b.dataset.m;
+  toast.classList.remove('show'); void toast.offsetWidth; toast.classList.add('show');
+});
+</script>
+</body>
+</html>
