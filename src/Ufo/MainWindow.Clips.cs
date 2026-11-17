@@ -33,6 +33,7 @@ public partial class MainWindow
     private bool isHearingLaughter;
     private ClipRecorder clipRecorder = null!;
     private ClipOverlay? clipOverlay;
+    private readonly List<ClipTicker> clipTickers = [];
     private string? clipGame;
     private TimeSpan lastInGame = TimeSpan.FromDays(-1), lastClipStart = TimeSpan.FromDays(-1), autoClipQuietUntil;
     private bool isClipBusy, isClipRestartPending;
@@ -75,6 +76,7 @@ public partial class MainWindow
         clipAudio.Dispose();
         laughter?.Dispose();
         clipOverlay?.Close();
+        ShowClipTickers([]);
     }
 
     /// <summary>Applies and saves a change. <paramref name="restarts"/>: the capture has to start over for it (it empties the buffer).</summary>
@@ -127,6 +129,7 @@ public partial class MainWindow
         ulong[] monitors = [.. captured.Select(screen => ClipRecorder.MonitorAt(screen.Bounds.X + screen.Bounds.Width / 2, screen.Bounds.Y + screen.Bounds.Height / 2))];
         try
         {
+            ShowClipTickers(isWanted ? captured : []);
             if (isWanted)
             {
                 lastClipStart = clipClock.Elapsed;
@@ -147,6 +150,19 @@ public partial class MainWindow
         {
             isClipRestartPending = false;
             await SyncClipBufferAsync(isRestart: true);
+        }
+    }
+
+    /// <summary>Keeps one ticking pixel on each monitor being recorded (none when the buffer is off).</summary>
+    private void ShowClipTickers(Forms.Screen[] screens)
+    {
+        clipTickers.ForEach(ticker => ticker.Close());
+        clipTickers.Clear();
+        foreach (Forms.Screen screen in screens)
+        {
+            var ticker = new ClipTicker(screen.Bounds);
+            ticker.Show();
+            clipTickers.Add(ticker);
         }
     }
 

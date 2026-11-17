@@ -20,7 +20,7 @@ public sealed class ClipRecorder : IDisposable
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "UFO", "clip-buffer");
 
     private readonly ClipAudio audio;
-    private readonly Dictionary<string, CapturePipeline?> pipelines = [];
+    private readonly Dictionary<string, CapturePipeline> pipelines = [];
     private readonly ChildProcessJob job = new();
     private Process? ffmpeg;
     private Timer? pruning;
@@ -70,7 +70,10 @@ public sealed class ClipRecorder : IDisposable
         if (!pipelines.TryGetValue(key, out CapturePipeline? pipeline))
         {
             pipeline = Candidates(wanted, isScaled ? (width, height) : null, monitors, monitorHeight).FirstOrDefault(Works);
-            pipelines[key] = pipeline;
+            if (pipeline is not null)
+            {
+                pipelines[key] = pipeline; // a failure is not remembered: the next try probes again
+            }
         }
         if (pipeline is null)
         {
@@ -245,7 +248,7 @@ public sealed class ClipRecorder : IDisposable
     {
         try
         {
-            using Process probe = Run(["-f", "lavfi", "-i", pipeline.Filter, "-frames:v", "5", "-c:v", pipeline.Encoder, "-f", "null", "-"], hasInput: false);
+            using Process probe = Run(["-f", "lavfi", "-i", pipeline.Filter, "-frames:v", "1", "-c:v", pipeline.Encoder, "-f", "null", "-"], hasInput: false);
             if (!probe.WaitForExit(8000))
             {
                 probe.Kill();
@@ -272,8 +275,8 @@ public sealed class ClipRecorder : IDisposable
             "-f", "lavfi", "-i", pipeline.Filter,
             "-map", "1:v", "-map", "0:a",
             "-c:v", pipeline.Encoder, "-b:v", $"{bitrate}k", "-maxrate", $"{bitrate * 3 / 2}k", "-bufsize", $"{bitrate * 2}k",
-            // The capture only delivers frames when the screen changes; a constant rate keeps one keyframe
-            // (and so one segment) per second. No B-frames: every segment starts cleanly and can be cut at.
+            // The capture only delivers frames when the screen changes (the app keeps a pixel ticking on the
+            // captured monitors, see ClipTicker); a constant rate keeps one keyframe (and so one segment) per second. No B-frames: every segment starts cleanly and can be cut at.
             "-fps_mode", "cfr", "-r", fps, "-g", fps, "-bf", "0",
             "-c:a", "aac", "-b:a", "160k",
             "-f", "segment", "-segment_time", "1", "-segment_format", "mpegts", segmentPattern,

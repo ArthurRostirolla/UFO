@@ -6,6 +6,45 @@ using System.Windows.Media.Animation;
 namespace Ufo;
 
 /// <summary>
+/// One pixel in a monitor's corner that changes (invisibly: black to almost black) ten times a second.
+/// Windows only hands the screen recorder a new frame when the screen changes, so on a still screen the
+/// recording would stop advancing; this keeps it moving. Click-through and never focused.
+/// </summary>
+public sealed class ClipTicker : Window
+{
+    private static readonly Brush Off = Brushes.Black, On = new SolidColorBrush(Color.FromRgb(1, 1, 1));
+    private readonly System.Windows.Threading.DispatcherTimer timer = new() { Interval = TimeSpan.FromMilliseconds(100) };
+    private readonly System.Drawing.Point corner;
+
+    public ClipTicker(System.Drawing.Rectangle monitor)
+    {
+        corner = monitor.Location;
+        WindowStyle = WindowStyle.None;
+        AllowsTransparency = true;
+        ResizeMode = ResizeMode.NoResize;
+        ShowInTaskbar = false;
+        ShowActivated = false;
+        Focusable = false;
+        Topmost = true;
+        Width = Height = 1;
+        Background = Off;
+        timer.Tick += (_, _) => Background = Background == Off ? On : Off;
+        Closed += (_, _) => timer.Stop();
+    }
+
+    protected override void OnSourceInitialized(EventArgs e)
+    {
+        base.OnSourceInitialized(e);
+        nint hwnd = new WindowInteropHelper(this).Handle;
+        nint style = NativeMethods.GetWindowLongPtr(hwnd, NativeMethods.ExtendedStyle);
+        NativeMethods.SetWindowLongPtr(hwnd, NativeMethods.ExtendedStyle, style | NativeMethods.Transparent | NativeMethods.ToolWindow | NativeMethods.NoActivate);
+        const uint NoZOrder = 0x4, NoActivate = 0x10;
+        NativeMethods.SetWindowPos(hwnd, 0, corner.X, corner.Y, 1, 1, NoZOrder | NoActivate);
+        timer.Start();
+    }
+}
+
+/// <summary>
 /// The on-screen notice of the clips: click-through, never focused, always on top and excluded from
 /// screen capture, so it shows over a (borderless) game without ending up inside the clip.
 /// </summary>
